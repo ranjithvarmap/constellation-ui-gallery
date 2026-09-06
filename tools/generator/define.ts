@@ -11,6 +11,7 @@
 /** Field subtypes the generator can emit a working control for. */
 export type FieldSubtype =
   | 'Text'
+  | 'Picklist'
   | 'Text-Paragraph'
   | 'Text-Email'
   | 'Text-URL'
