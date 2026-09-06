@@ -59,7 +59,8 @@
     "update": "custom-dx-components update",
     "validate": "custom-dx-components buildComponent",
     "validate-schema": "custom-dx-components validateSchema",
-    "validateAll": "custom-dx-components buildAllComponents"
+    "validateAll": "custom-dx-components buildAllComponents",
+    "generate": "ts-node -P tools/generator/tsconfig.json tools/generator/cli.ts"
   },
   "dependencies": {
     "@arcgis/core": "^5.1.0",
@@ -132,6 +133,7 @@
     "storybook": "^10.4.6",
     "stylelint": "17.13.0",
     "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1"
   },
