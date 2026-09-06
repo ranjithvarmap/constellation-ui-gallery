@@ -16,6 +16,7 @@ import { MainCard } from './styles';
 import * as plusIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/plus.icon';
 import * as pencilIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/pencil.icon';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(plusIcon, pencilIcon);
 type KanbanBoardProps = {
@@ -133,8 +134,8 @@ export const PegaExtensionsKanbanBoard = (props: KanbanBoardProps) => {
     if (typeof contextProperty !== 'undefined' && metadata?.config?.contextProperty) {
       parameters = { dataViewParameters: { key: contextProperty } };
     }
-    (window as any).PCore.getDataApiUtils()
-      .getData(dataPage, parameters)
+    createPlatform(getPConnect)
+      .caseData.query(dataPage, parameters)
       .then(async (response: any) => {
         if (response.data.data !== null) {
           const tmpColumns: any = {};
@@ -186,20 +187,8 @@ export const PegaExtensionsKanbanBoard = (props: KanbanBoardProps) => {
 
   /* Subscribe to changes to the assignment case */
   useEffect(() => {
-    (window as any).PCore.getPubSubUtils().subscribe(
-      (window as any).PCore.getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION,
-      () => {
-        /* If an assignment is updated - force a reload of the events */
-        loadTasks();
-      },
-      'ASSIGNMENT_SUBMISSION',
-    );
-    return () => {
-      (window as any).PCore.getPubSubUtils().unsubscribe(
-        (window as any).PCore.getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION,
-        'ASSIGNMENT_SUBMISSION',
-      );
-    };
+    /* If an assignment is updated - force a reload of the events */
+    return createPlatform(getPConnect).events.on('assignmentSubmission', () => loadTasks());
   }, []);
 
   useEffect(() => {
@@ -232,11 +221,7 @@ export const PegaExtensionsKanbanBoard = (props: KanbanBoardProps) => {
           {loading ? (
             <Progress
               placement='local'
-              message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-                'Loading content...',
-                'Generic',
-                '@BASECLASS!GENERIC!PYGENERICFIELDS',
-              )}
+              message={createPlatform(getPConnect).text.loadingContent()}
             />
           ) : (
             groupList.map((group: string) => (

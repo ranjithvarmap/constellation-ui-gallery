@@ -1,5 +1,6 @@
 import { Progress, Button, Icon, Card, CardHeader, CardContent, Text, useTheme } from '@pega/cosmos-react-core';
 import { StyledCardContent } from './styles';
+import { createPlatform } from '../shared/platform';
 
 export type TaskProps = {
   title: string;
@@ -41,11 +42,7 @@ export const Task = (props: TaskProps) => {
           {details || (
             <Progress
               placement='inline'
-              message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-                'Loading content...',
-                'Generic',
-                '@BASECLASS!GENERIC!PYGENERICFIELDS',
-              )}
+              message={createPlatform(getPConnect).text.loadingContent()}
             />
           )}
         </CardContent>

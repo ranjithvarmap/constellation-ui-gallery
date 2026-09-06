@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Progress, Button, Icon, Card, CardHeader, CardContent, Text, useTheme } from '@pega/cosmos-react-core';
 import { Draggable } from '@hello-pangea/dnd';
 import { StyledCardContent } from './styles';
+import { createPlatform } from '../shared/platform';
 
 export type TaskProps = {
   title: string;
@@ -44,11 +45,7 @@ export const Task = (props: TaskProps) => {
             {newdetails || (
               <Progress
                 placement='inline'
-                message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-                  'Loading content...',
-                  'Generic',
-                  '@BASECLASS!GENERIC!PYGENERICFIELDS',
-                )}
+                message={createPlatform(getPConnect).text.loadingContent()}
               />
             )}
           </CardContent>
@@ -80,11 +77,7 @@ export const Task = (props: TaskProps) => {
               {newdetails || (
                 <Progress
                   placement='inline'
-                  message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-                    'Loading content...',
-                    'Generic',
-                    '@BASECLASS!GENERIC!PYGENERICFIELDS',
-                  )}
+                  message={createPlatform(getPConnect).text.loadingContent()}
                 />
               )}
             </CardContent>

@@ -1,6 +1,7 @@
 import { type MouseEvent } from 'react';
 import { withConfiguration, Link } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type ActionableButtonProps = {
   value: string;
@@ -16,28 +17,25 @@ export const PegaExtensionsCaseReference = (props: ActionableButtonProps) => {
   if (value && typeof selectionProperty === 'string' && selectionProperty.includes(' ')) {
     const caseID = selectionProperty.split(' ')[1];
     const key = selectionProperty;
-    const linkURL = (window as any).PCore.getSemanticUrlUtils().getResolvedSemanticURL(
-      (window as any).PCore.getSemanticUrlUtils().getActions().ACTION_OPENWORKBYHANDLE,
-      { caseClassName: refCaseClassName },
-      { workID: caseID },
-      { page: 'pyDetails' },
-      { caseID: key },
-    );
+    const platform = createPlatform(getPConnect);
+    const linkURL = platform.links.caseUrl({
+      caseKey: key,
+      className: refCaseClassName,
+      workId: caseID,
+    });
 
     return (
       <Link
         href={linkURL}
         previewable={allowPreview}
         onPreview={() => {
-          getPConnect().getActionsApi().showCasePreview(encodeURI(key), {
-            caseClassName: refCaseClassName,
-          });
+          platform.caseActions.preview(key, refCaseClassName);
         }}
         onClick={(e: MouseEvent<HTMLButtonElement>) => {
           /* for links - need to set onClick for spa to avoid full reload - (cmd | ctrl) + click for opening in new tab */
           if (!e.metaKey && !e.ctrlKey) {
             e.preventDefault();
-            getPConnect().getActionsApi().openWorkByHandle(key, refCaseClassName);
+            platform.caseActions.open(key, refCaseClassName);
           }
         }}
       >

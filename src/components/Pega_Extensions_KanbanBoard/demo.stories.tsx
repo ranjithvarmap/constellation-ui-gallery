@@ -2,6 +2,7 @@ import type { StoryObj } from '@storybook/react-webpack5';
 import { DateTimeDisplay, FieldValueItem } from '@pega/cosmos-react-core';
 import { Details, DetailsList } from '@pega/cosmos-react-work';
 import { PegaExtensionsKanbanBoard } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 export default {
   title: 'Widgets/Kanban Board',
@@ -119,194 +120,51 @@ const tasks: any = {
   },
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getLocaleUtils: () => {
-      return {
-        getLocaleValue: (val: string) => {
-          return val;
-        },
-      };
+/* The platform double is shared across the gallery; this story only supplies
+   what is specific to a kanban board: the task rows, and how a card's detail
+   view should render. */
+const setPCore = () =>
+  installPlatformFake({
+    rows: Object.values(tasks),
+    /* The alerts are how this story shows an action fired. */
+    actions: {
+      openLocalAction: (_action: string, options: any) => alert(`Opening local action for case:${options?.caseID}`),
+      createWork: (className: string) => alert(`Create case type with className:${className}`),
     },
-    createPConnect: () => ({
-      getPConnect: () => ({
-        createComponent: (meta: any) => {
-          const id = meta.config.pyID;
-          const highlightedData = [<FieldValueItem key='CaseID' variant='stacked' name='CaseID' value={id} />];
-          return (
-            <Details
-              name='Details'
-              highlightedData={highlightedData}
-              collapsible={false}
-              columns={{
-                a: (
-                  <DetailsList
-                    items={[
-                      {
-                        id: 'Description',
-                        name: 'Description',
-                        value: tasks[id].pyDescription,
-                      },
-                      {
-                        id: 'Assigned To',
-                        name: 'Assigned To',
-                        value: tasks[id].pxCreateOpName,
-                      },
-                      {
-                        id: 'Due date',
-                        name: 'Due date',
-                        value: <DateTimeDisplay variant='date' value={tasks[id].pyDueDate} />,
-                      },
-                    ]}
-                  />
-                ),
-              }}
-            />
-          );
-        },
-      }),
-    }),
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
+    renderView: (meta) => {
+      const id = meta.config.pyID;
+      return (
+        <Details
+          name='Details'
+          highlightedData={[<FieldValueItem key='CaseID' variant='stacked' name='CaseID' value={id} />]}
+          collapsible={false}
+          columns={{
+            a: (
+              <DetailsList
+                items={[
+                  { id: 'Description', name: 'Description', value: tasks[id].pyDescription },
+                  { id: 'Assigned To', name: 'Assigned To', value: tasks[id].pxCreateOpName },
+                  {
+                    id: 'Due date',
+                    name: 'Due date',
+                    value: <DateTimeDisplay variant='date' value={tasks[id].pyDueDate} />,
+                  },
+                ]}
+              />
+            ),
+          }}
+        />
+      );
     },
-    getViewResources: () => {
-      return {
-        fetchViewResources: () => {
-          return {
-            config: {
-              showLabel: true,
-            },
-          };
-        },
-        updateViewResources: () => {},
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getEvents: () => {
-      return {
-        getCaseEvent: () => {
-          return {
-            ASSIGNMENT_SUBMISSION: 'ASSIGNMENT_SUBMISSION',
-          };
-        },
-      };
-    },
-    getPubSubUtils: () => {
-      return {
-        subscribe: () => {
-          /* nothing */
-        },
-        unsubscribe: () => {
-          /* nothing */
-        },
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return undefined;
-        },
-        getActions: () => {
-          return {
-            ACTION_OPENWORKBYHANDLE: 'openWorkByHandle',
-          };
-        },
-      };
-    },
-    getDataApiUtils: () => {
-      return {
-        getCaseEditLock: () => {
-          return Promise.resolve({
-            headers: {
-              etag: 'xxx',
-            },
-          });
-        },
-        updateCaseEditFieldsData: () => {
-          return Promise.resolve();
-        },
-        getDataObjectView: () => {
-          return Promise.resolve({
-            data: {
-              data: {
-                content: {
-                  pyStatusWork: 'New',
-                },
-              },
-            },
-          });
-        },
-        getData: () => {
-          return Promise.resolve({
-            data: {
-              data: Array.from(Object.entries(tasks).map((val: any) => val[1])),
-            },
-          });
-        },
-      };
-    },
-  };
-};
+  });
 
 type Story = StoryObj<typeof PegaExtensionsKanbanBoard>;
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    const platform = setPCore();
     const props = {
       ...args,
-      getPConnect: () => {
-        return {
-          getLocalizedValue: (val: string) => {
-            return val;
-          },
-          getRawMetadata: () => {},
-          getContextName: () => 'primary',
-          getContainerManager: () => ({
-            addTransientItem: () => {},
-            updateTransientData: () => {},
-          }),
-          getActionsApi: () => {
-            return {
-              openWorkByHandle: () => {
-                /* nothing */
-              },
-              openLocalAction: (id: string) => {
-                alert(`Opening local action for case:${id}`);
-              },
-              createWork: (className: string) => {
-                alert(`Create case type with className:${className}`);
-              },
-              updateFieldValue: () => {
-                /* nothing */
-              },
-              triggerFieldChange: () => {
-                /* nothing */
-              },
-              showCasePreview: () => {
-                /* nothing */
-              },
-            };
-          },
-          ignoreSuggestion: () => {
-            /* nothing */
-          },
-          acceptSuggestion: () => {
-            /* nothing */
-          },
-          setInheritedProps: () => {
-            /* nothing */
-          },
-          resolveConfigProps: () => {
-            /* nothing */
-          },
-        };
-      },
+      getPConnect: platform.getPConnect,
     };
     return <PegaExtensionsKanbanBoard {...props} />;
   },

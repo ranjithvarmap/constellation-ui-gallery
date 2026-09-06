@@ -14,6 +14,7 @@ import {
 } from '@pega/cosmos-react-core';
 import { Task } from './Task';
 import { loadDetails, getFilters } from './utils';
+import { createPlatform, type DashboardFilterPayload } from '../shared/platform';
 import { MainCard } from './styles';
 import '../shared/create-nonce';
 
@@ -101,8 +102,8 @@ export const PegaExtensionsCardGallery = (props: CardGalleryProps) => {
         },
       };
     }
-    (window as any).PCore.getDataApiUtils()
-      .getData(dataPage, payload)
+    createPlatform(getPConnect)
+      .caseData.query(dataPage, payload)
       .then(async (response: any) => {
         if (!isFiltered) {
           /* First time - no data loaded */
@@ -173,63 +174,41 @@ export const PegaExtensionsCardGallery = (props: CardGalleryProps) => {
 
   /* Subscribe to changes to the assignment case */
   useEffect(() => {
-    (window as any).PCore.getPubSubUtils().subscribe(
-      (window as any).PCore.getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION,
-      () => {
-        /* If an assignment is updated - force a reload of the events */
-        loadTasks(false);
-      },
-      'ASSIGNMENT_SUBMISSION',
-    );
-    return () => {
-      (window as any).PCore.getPubSubUtils().unsubscribe(
-        (window as any).PCore.getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION,
-        'ASSIGNMENT_SUBMISSION',
-      );
-    };
+    /* If an assignment is updated - force a reload of the events */
+    return createPlatform(getPConnect).events.on('assignmentSubmission', () => loadTasks(false));
   }, []);
 
   /* Subscribe to dashboard filter changes only if useInDashboard is true */
   useEffect(() => {
-    if (useInDashboard) {
-      (window as any).PCore.getPubSubUtils().subscribe(
-        (window as any).PCore.getConstants().PUB_SUB_EVENTS.EVENT_DASHBOARD_FILTER_CHANGE,
-        (data: any) => {
-          const { filterId, filterExpression } = data;
-          if (filterExpression) {
-            filters.current[filterId] = filterExpression;
-          } else {
-            delete filters.current[filterId];
-          }
-          loadTasks(true);
-        },
-        'dashboard-component-cardgallery',
-        false,
-        getPConnect().getContextName(),
-      );
-      (window as any).PCore.getPubSubUtils().subscribe(
-        (window as any).PCore.getConstants().PUB_SUB_EVENTS.EVENT_DASHBOARD_FILTER_CLEAR_ALL,
-        () => {
-          filters.current = {};
-          loadTasks(true);
-        },
-        'dashboard-component-cardgallery',
-        false,
-        getPConnect().getContextName(),
-      );
-      return () => {
-        (window as any).PCore.getPubSubUtils().unsubscribe(
-          (window as any).PCore.getConstants().PUB_SUB_EVENTS.EVENT_DASHBOARD_FILTER_CHANGE,
-          'dashboard-component-cardgallery',
-          getPConnect().getContextName(),
-        );
-        (window as any).PCore.getPubSubUtils().unsubscribe(
-          (window as any).PCore.getConstants().PUB_SUB_EVENTS.EVENT_DASHBOARD_FILTER_CLEAR_ALL,
-          'dashboard-component-cardgallery',
-          getPConnect().getContextName(),
-        );
-      };
-    }
+    if (!useInDashboard) return undefined;
+    const platform = createPlatform(getPConnect);
+    const scope = { context: platform.context, id: 'dashboard-component-cardgallery' };
+
+    const offChange = platform.events.on<DashboardFilterPayload>(
+      'dashboardFilterChange',
+      ({ filterId, filterExpression }) => {
+        if (filterExpression) {
+          filters.current[filterId] = filterExpression;
+        } else {
+          delete filters.current[filterId];
+        }
+        loadTasks(true);
+      },
+      scope,
+    );
+    const offClearAll = platform.events.on(
+      'dashboardFilterClearAll',
+      () => {
+        filters.current = {};
+        loadTasks(true);
+      },
+      scope,
+    );
+
+    return () => {
+      offChange();
+      offClearAll();
+    };
   }, []);
 
   useEffect(() => {
@@ -248,11 +227,7 @@ export const PegaExtensionsCardGallery = (props: CardGalleryProps) => {
       return genState(
         <Progress
           placement='block'
-          message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-            'Loading content...',
-            'Generic',
-            '@BASECLASS!GENERIC!PYGENERICFIELDS',
-          )}
+          message={createPlatform(getPConnect).text.loadingContent()}
         />,
       );
     }
