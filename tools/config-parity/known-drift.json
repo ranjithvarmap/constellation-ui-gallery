@@ -1,0 +1,35 @@
+{
+  "_comment": [
+    "Property-panel knobs that exist in config.json but are never read by the",
+    "component. Each one is a control an App Studio author can set that does",
+    "nothing. Recorded 2026-09-06 so the check passes on the existing tree and",
+    "fails on NEW drift.",
+    "",
+    "This list must only shrink. Fixing a component means either wiring the",
+    "prop up or deleting it from config.json, then removing its entry here —",
+    "the 'no stale entries' test enforces that.",
+    "",
+    "Worked example: OAuthConnect.iconName offers 'node' and 'chain', and the",
+    "component imports and registers both icons, but never reads iconName to",
+    "choose between them."
+  ],
+  "drift": [
+    "CaseReference.label",
+    "FormWithVerticalStepper.inheritParentLayout",
+    "ImageMagnify.columnWidth",
+    "ImageMagnify.label",
+    "ImageMagnify.testId",
+    "JapaneseInput.columnWidth",
+    "JapaneseInput.helperText",
+    "MarkdownInput.columnWidth",
+    "MarkdownInput.width",
+    "OAuthConnect.iconName",
+    "SecureRichText.columnWidth",
+    "SecureRichText.width",
+    "SignatureCapture.placeholder",
+    "StarRatingInput.placeholder",
+    "StatusBadge.label",
+    "Toggle.columnWidth",
+    "Toggle.width"
+  ]
+}
