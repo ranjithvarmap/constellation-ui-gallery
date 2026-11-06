@@ -14,7 +14,8 @@ the `pega-dx-contract` skill. The summary below is the rules, not the detail.
 - `src/components/shared/platform/` — typed facade over `PCore`/`PConnect`
   (`createPlatform`) and its test double (`installPlatformFake`).
 - `src/components/shared/create-nonce.ts` — CSP nonce shim every `index.tsx` imports.
-- `tools/generator/` — spec-driven component generator (Fields only, so far).
+- `tools/generator/` — spec-driven generator for all three types (`defineField`,
+  `defineTemplate`, `defineWidget`).
 - `tools/config-parity/` — checks every `config.json` property is read by the component.
 - `.storybook/` — Storybook 10 with Cosmos themes; it is the local dev environment.
 
@@ -24,8 +25,9 @@ case). Check `type` in `config.json` before changing a component.
 
 ## Rules
 
-1. **New components start from the generator** when it supports the type:
-   `npm run generate -- tools/generator/specs/<name>.field.ts`. Never hand-write
+1. **New components start from the generator**, whatever the type:
+   `npm run generate -- tools/generator/specs/<name>.<field|template|widget>.ts`.
+   The `new-dx-component` skill has the whole workflow. Never hand-write
    `config.json` and the props type separately — that is how they drift.
 2. **No `PCore` outside `shared/platform`.** Go through `createPlatform(getPConnect)`.
    If the API you need is missing, add it to `types.ts`, `index.ts` and `fake.ts`
@@ -54,9 +56,17 @@ npx jest src/components/Pega_Extensions_<Name>
 npx jest tools                                       # config parity + generator
 ```
 
-`npm run buildComponent` is Pega's own validation and build. It can prompt, so
-ask the user to run it rather than running it unattended. `npm start` launches
-Storybook on port 6006.
+Then Pega's own build: config schema, lint and bundle. It is local and contacts
+no server. Given the component and two answers it does not prompt:
+
+```bash
+npx custom-dx-components buildComponent Pega_Extensions_<Name> N N </dev/null
+git checkout -- store && git clean -fdq store   # the build rewrites the tracked archive
+```
+
+The bundle type-checks every file `tsconfig.build.json` includes, so a type
+error anywhere under `src` fails it, not only in the component being built.
+`npm start` launches Storybook on port 6006.
 
 ## Conventions
 

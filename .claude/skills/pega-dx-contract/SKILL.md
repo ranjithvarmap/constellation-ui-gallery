@@ -124,4 +124,5 @@ writing, those are the components that import `../shared/platform`:
 grep -l "shared/platform" src/components/Pega_*/*.tsx
 ```
 
-Prefer `tools/generator` output for Fields over any hand-written Field.
+Prefer `tools/generator` output over any hand-written component, for every type.
+The `new-dx-component` skill has the workflow.

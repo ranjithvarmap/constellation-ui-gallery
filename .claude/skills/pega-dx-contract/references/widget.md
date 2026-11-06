@@ -11,9 +11,37 @@ what it needs (data pages, case data, views) and acts through the platform.
 Choose `"CASE"` only when the widget is meaningless without a case. On a page
 there is no case, so any case lookup must handle that absence.
 
-Generator support for Widgets does not exist yet. The reference implementation is
-`Pega_Extensions_KanbanBoard`, which is fully on the platform facade (index.tsx,
-utils.ts, Task.tsx and its story).
+**Start from the generator.** Write `tools/generator/specs/<name>.widget.ts`:
+
+```ts
+import { defineWidget } from '../define';
+
+export default defineWidget({
+  name: 'RelatedTasks',
+  label: 'Related tasks',
+  description: 'Tasks raised against this case.',
+  subtype: 'CASE', // or 'PAGE', or ['PAGE', 'CASE']
+  list: {
+    columns: [
+      { field: 'pyLabel', label: 'Task' },
+      { field: 'pyStatusWork', label: 'Status' },
+    ],
+    caseParameter: 'CaseInstanceKey', // omit when the list does not depend on the case
+  },
+});
+```
+
+Every widget gets `heading` (defaulted to the label) and a visibility condition.
+With a `list` it also gets a required `dataPage` setting, reads the rows through
+`platform.caseData.query`, shows loading, empty and error states, refreshes
+after an assignment is submitted, unsubscribes on unmount, and localises its
+strings. That is Pega's CASE widget scaffold, rebuilt on the facade. Without a
+`list` it is a bare card with a TODO for its content. `caseParameter` on a
+PAGE-only widget is rejected, because a page has no case.
+
+For what the generator does not cover (drag and drop, detail views, case
+actions), the reference implementation is `Pega_Extensions_KanbanBoard`, which
+is fully on the platform facade (index.tsx, utils.ts, Task.tsx and its story).
 
 ## Props
 

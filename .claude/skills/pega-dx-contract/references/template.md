@@ -8,10 +8,33 @@ It renders the platform's children and does not create fields itself.
 | `DETAILS` | Details/summary views (read-only) | Fields render in display mode |
 | `FORM`    | Form views on an assignment       | Fields are editable           |
 
-Pick `FORM` only if the layout makes sense for editing. Generator support for
-Templates does not exist yet, so for now copy from
-`Pega_Extensions_FormFullWidth` (FORM) or `Pega_Extensions_FieldGroupAsRow`
-(DETAILS), the two smallest templates.
+Pick `FORM` only if the layout makes sense for editing.
+
+**Start from the generator.** Write `tools/generator/specs/<name>.template.ts`:
+
+```ts
+import { defineTemplate, p, r } from '../define';
+
+export default defineTemplate({
+  name: 'TwoColumnSummary',
+  label: 'Two column summary',
+  description: 'Summary on the left, contacts on the right.',
+  subtype: 'DETAILS',
+  regions: [r.region('A', 'Summary'), r.region('B', 'Contacts', { accepts: ['Fields'] })],
+  properties: [p.boolean('showDividers', 'Show dividers')],
+});
+```
+
+`regions` defaults to one region `A` that accepts fields and views. The output
+follows Pega's own template scaffolding (`@pega/custom-dx-components`,
+`templates/Constellation/Template`):
+
+- `heading` on every template, and `NumCols` (one, two or three columns) when
+  there is one region.
+- One region is laid out in a `NumCols` grid; several get a column each.
+- DETAILS marks every region read-only (below).
+- Tests that render every region, accept one region passed as a single element,
+  and for DETAILS check each region was marked read-only.
 
 ## Regions
 
@@ -46,9 +69,15 @@ export const PegaExtensionsX = ({ heading, children }: Props) => (
 );
 ```
 
-- `children` is normally an array. Some existing templates call `children.map`
-  directly, which breaks on a single child. Use `React.Children.toArray(children)`
-  in new code.
+- `children` holds one rendered element per region, in `config.json` order.
+  With one region it can arrive as a **single element, not an array**, as Pega's
+  own scaffold notes. Some existing templates (FieldGroupAsRow among them) call
+  `children.map` directly, which throws then. Always normalise with
+  `Children.toArray(children)`.
+- A DETAILS template shows its regions read-only by telling each region's
+  PConnect so before it renders, as Pega's DETAILS scaffold does:
+  `region.props.getPConnect().setInheritedProp('readOnly', true)` and
+  `setInheritedProp('displayMode', 'DISPLAY_ONLY')`.
 - If you need region metadata (names, the region's own config), use
   `getPConnect().getChildren()`. `Pega_Extensions_DynamicTemplate` reads it with a
   fallback to `props.children`.
