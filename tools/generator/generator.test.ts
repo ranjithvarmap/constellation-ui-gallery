@@ -1,3 +1,4 @@
+import ts from 'typescript';
 import { defineField, p } from './define';
 import { renderComponent } from './render';
 import { declaredInConfig } from '../config-parity/parity';
@@ -38,6 +39,23 @@ describe('spec validation', () => {
     expect(() =>
       defineField({ name: 'bad name', label: 'x', description: '', subtype: 'Text' }),
     ).toThrow(/PascalCase/);
+  });
+
+  it('gives a Boolean field no placeholder by default', () => {
+    const spec_ = defineField({ name: 'Flag', label: 'Flag', description: '', subtype: 'Boolean' });
+    expect(spec_.inputSettings).toEqual(['helperText']);
+  });
+
+  it('rejects a placeholder on a Boolean field', () => {
+    expect(() =>
+      defineField({
+        name: 'Flag',
+        label: 'Flag',
+        description: '',
+        subtype: 'Boolean',
+        inputSettings: ['placeholder'],
+      }),
+    ).toThrow(/Boolean field has no placeholder/);
   });
 
   it('rejects duplicate properties', () => {
@@ -110,6 +128,65 @@ describe('generated output', () => {
     expect(groups.map((group: any) => group.label)).toEqual(['Input settings', 'Conditions', 'Advanced']);
     expect(config.properties.some((property: any) => property.name === 'PegaAboutLabel')).toBe(true);
     expect(config.defaultConfig).toEqual({ label: '@L $this.label', detailFVLItem: true });
+  });
+
+  /**
+   * readOnly, required and disabled arrive as the string 'true' or 'false' when
+   * a condition drives them. Both strings are truthy, so passing them straight
+   * through rendered a field whose condition was false as read-only, required
+   * and disabled.
+   */
+  describe('condition props', () => {
+    const conditions = ['disabled', 'readOnly', 'required'];
+
+    it('types each condition as boolean or string', () => {
+      const files = fileMap();
+      for (const name of conditions) {
+        expect(files['index.tsx']).toContain(`${name}?: boolean | string;`);
+      }
+    });
+
+    it('coerces each condition before anything reads it', () => {
+      const source = fileMap()['index.tsx'];
+      for (const name of conditions) {
+        expect(source).toContain(`${name}: ${name}Flag`);
+        expect(source).toContain(`const ${name} = isTrue(${name}Flag);`);
+        /* The old shape, which let the raw string through under the plain name. */
+        expect(source).not.toContain(`${name} = false`);
+      }
+    });
+
+    it('emits an isTrue that accepts only true and the string "true"', () => {
+      const declaration = /const isTrue = [^\n]+/.exec(fileMap()['index.tsx']);
+      expect(declaration).not.toBeNull();
+      const js = ts.transpile(`${declaration![0]}\nisTrue;`, { target: ts.ScriptTarget.ES2019 });
+      const isTrue = (0, eval)(js) as (flag?: boolean | string) => boolean;
+
+      expect(isTrue(true)).toBe(true);
+      expect(isTrue('true')).toBe(true);
+      expect(isTrue(false)).toBe(false);
+      expect(isTrue('false')).toBe(false);
+      expect(isTrue('')).toBe(false);
+      expect(isTrue(undefined)).toBe(false);
+    });
+
+    it('emits a test that checks both condition strings against the rendered control', () => {
+      const test = fileMap()['demo.test.tsx'];
+      expect(test).toContain("treats the condition string '%s' as %s");
+      expect(test).toContain("['false', false]");
+    });
+  });
+
+  it('hands a numeric field value to the Input as a string', () => {
+    const numeric = defineField({ name: 'Count', label: 'Count', description: '', subtype: 'Integer' });
+    const source = renderComponent(numeric).find((file) => file.name === 'index.tsx')!.contents;
+    expect(source).toContain("value={value === undefined ? '' : String(value)}");
+  });
+
+  it('types a paragraph field change handler for a textarea', () => {
+    const paragraph = defineField({ name: 'Notes', label: 'Notes', description: '', subtype: 'Text-Paragraph' });
+    const source = renderComponent(paragraph).find((file) => file.name === 'index.tsx')!.contents;
+    expect(source).toContain('ChangeEvent<HTMLTextAreaElement>');
   });
 
   it('uses the shared platform fake in the generated story', () => {

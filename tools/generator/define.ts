@@ -177,6 +177,14 @@ export const defineField = (spec: FieldSpec): ResolvedSpec => {
     seen.add(property.name);
   }
 
+  /* A checkbox has nowhere to show a placeholder, so offering one would put a
+     control in the property panel that the component cannot honour. */
+  if (spec.subtype === 'Boolean' && spec.inputSettings?.includes('placeholder')) {
+    throw new Error('a Boolean field has no placeholder; remove it from inputSettings');
+  }
+  const defaultInputSettings: InputSetting[] =
+    spec.subtype === 'Boolean' ? ['helperText'] : ['placeholder', 'helperText'];
+
   return {
     name: spec.name,
     label: spec.label,
@@ -186,7 +194,7 @@ export const defineField = (spec: FieldSpec): ResolvedSpec => {
     library: spec.library ?? 'Extensions',
     version: spec.version ?? '4.0.4',
     properties,
-    inputSettings: spec.inputSettings ?? ['placeholder', 'helperText'],
+    inputSettings: spec.inputSettings ?? defaultInputSettings,
     capabilities: spec.capabilities ?? [],
     componentKey: `Pega_Extensions_${spec.name}`,
     componentName: `PegaExtensions${spec.name}`,

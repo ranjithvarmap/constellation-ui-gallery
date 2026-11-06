@@ -15,9 +15,13 @@ const STANDARD_PROPS = (spec: ResolvedSpec) => {
     { name: 'value', type: valueType(spec), comment: 'value supplied by the platform' },
     { name: 'validatemessage', type: 'string', comment: 'validation message', optional: true },
     { name: 'hideLabel', type: 'boolean', comment: 'hide the label', optional: true },
-    { name: 'disabled', type: 'boolean', comment: 'is the field disabled', optional: true },
-    { name: 'readOnly', type: 'boolean', comment: 'is the field read-only', optional: true },
-    { name: 'required', type: 'boolean', comment: 'is the field required', optional: true },
+    /* The three conditions arrive as the string 'true' or 'false' rather than
+       a boolean when App Studio drives them from a condition. Both strings are
+       truthy, so they are typed as either and coerced once, by isTrue, before
+       anything reads them. */
+    { name: 'disabled', type: 'boolean | string', comment: 'is the field disabled', optional: true },
+    { name: 'readOnly', type: 'boolean | string', comment: 'is the field read-only', optional: true },
+    { name: 'required', type: 'boolean | string', comment: 'is the field required', optional: true },
     { name: 'testId', type: 'string', comment: 'test id', optional: true },
     { name: 'displayMode', type: "'DISPLAY_ONLY' | 'LABELS_LEFT' | ''", comment: 'display mode', optional: true },
     { name: 'getPConnect', type: 'any', comment: 'PConnect accessor' },
@@ -98,6 +102,8 @@ export const emitComponent = (spec: ResolvedSpec): string => {
   const usesPlatform = spec.capabilities.length > 0;
   const isBoolean = spec.subtype === 'Boolean';
   const isPicklist = spec.subtype === 'Picklist';
+  /* The value is typed number, but a Cosmos Input takes a string. */
+  const isNumeric = spec.subtype === 'Integer' || spec.subtype === 'Decimal';
 
   const propsType = [
     ...standard.map(
@@ -122,9 +128,11 @@ export const emitComponent = (spec: ResolvedSpec): string => {
     ...spec.inputSettings,
     'validatemessage',
     'hideLabel = false',
-    'disabled = false',
-    'readOnly = false',
-    'required = false',
+    /* Renamed on the way in so the coerced booleans below can take the plain
+       names, and nothing downstream can reach the raw string by mistake. */
+    'disabled: disabledFlag',
+    'readOnly: readOnlyFlag',
+    'required: requiredFlag',
     'testId',
     'displayMode',
     'getPConnect',
@@ -163,7 +171,9 @@ ${spec.properties
     ? `  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {\n    actions.updateFieldValue(propName, event.target.value);\n  };`
     : isBoolean
     ? `  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {\n    actions.updateFieldValue(propName, event.target.checked);\n  };`
-    : `  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {\n    actions.updateFieldValue(propName, event.target.value);\n  };`;
+    : `  const handleChange = (event: ChangeEvent<${
+        spec.subtype === 'Text-Paragraph' ? 'HTMLTextAreaElement' : 'HTMLInputElement'
+      }>) => {\n    actions.updateFieldValue(propName, event.target.value);\n  };`;
 
   const picklistMarkup = `        <${component}
           value={value ?? ''}
@@ -199,7 +209,7 @@ ${
         />`
     : `        <${component}
           ${extra}
-          value={value ?? ''}${spec.inputSettings.includes('placeholder') ? '\n          placeholder={placeholder}' : ''}
+          value={${isNumeric ? "value === undefined ? '' : String(value)" : "value ?? ''"}}${spec.inputSettings.includes('placeholder') ? '\n          placeholder={placeholder}' : ''}
           disabled={disabled}
           readOnly={readOnly}
           required={required}
@@ -239,10 +249,16 @@ type ${spec.componentName}Props = {
 ${propsType}
 };
 
+/** A condition driven by a when rule arrives as the string 'true' or 'false', not a boolean. */
+const isTrue = (flag?: boolean | string): boolean => flag === true || flag === 'true';
+
 export const ${spec.componentName} = (props: ${spec.componentName}Props) => {
   const {
     ${destructured},
   } = props;
+  const disabled = isTrue(disabledFlag);
+  const readOnly = isTrue(readOnlyFlag);
+  const required = isTrue(requiredFlag);
 
   const pConn = getPConnect();
   const actions = pConn.getActionsApi();
@@ -397,6 +413,20 @@ const { Default } = composeStories(stories);
 test('renders ${spec.label} with default args', async () => {
   render(<Default />);
   expect(await screen.findByText('${spec.label}')).toBeVisible();
+});
+
+/* A condition that drives these props hands the component the string 'true' or
+   'false'. Both strings are truthy, so without coercion 'false' locks the field. */
+test.each([
+  ['true', true],
+  ['false', false],
+] as const)("treats the condition string '%s' as %s", (flag, expected) => {
+  const { container } = render(<Default readOnly={flag} required={flag} disabled={flag} />);
+  const control = container.querySelector('input, select, textarea');
+  expect(control).not.toBeNull();
+  expect(control?.hasAttribute('readonly')).toBe(expected);
+  expect(control?.hasAttribute('required')).toBe(expected);
+  expect(control?.hasAttribute('disabled')).toBe(expected);
 });
 ${extra}`;
 };
