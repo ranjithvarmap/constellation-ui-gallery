@@ -22,6 +22,7 @@ import type { SummaryListItem, ModalMethods, ModalProps, LightboxItem, LightboxP
 import { downloadBlob, addAttachment, downloadFile } from './utils';
 import StyledCardContent from './styles';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 import * as polarisIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/polaris.icon';
 import * as informationIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/information.icon';
@@ -106,7 +107,7 @@ export const PegaExtensionsDisplayAttachments = (props: UtilityListProps) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [elemRef, setElemRef] = useState<HTMLElement>();
   const [images, setImages] = useState<LightboxProps['items'] | null>(null);
-  const caseID = getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+  const caseID = createPlatform(getPConnect).caseInfo.key();
   const viewAllModalRef = useRef<ModalMethods<any>>();
   const theme = useTheme();
   const downloadAll = () => {
@@ -210,7 +211,7 @@ export const PegaExtensionsDisplayAttachments = (props: UtilityListProps) => {
           setLoading(false);
         });
     } else {
-      const CaseInstanceKey = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+      const CaseInstanceKey = createPlatform(() => pConn).caseInfo.key();
       const payload = {
         dataViewParameters: [{ LinkRefFrom: CaseInstanceKey }],
       };

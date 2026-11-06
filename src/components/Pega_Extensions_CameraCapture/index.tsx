@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, Flex, Button, Input, withConfiguration } from '@pega/cosmos-react-core';
 import StyledPegaExtensionsCameraCaptureWrapper from './styles';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type CameraComponentProps = {
   buttonText: string;
@@ -39,7 +40,7 @@ export const PegaExtensionsCameraCapture = (props: CameraComponentProps) => {
   const IMAGE_MIME = 'image/png';
 
   const caseInfo = useMemo(() => {
-    return pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO) || {};
+    return createPlatform(() => pConn).caseInfo.raw<Record<string, any>>() || {};
   }, [pConn]);
 
   useEffect(() => {

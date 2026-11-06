@@ -13,6 +13,7 @@ import {
 import { Container, StyledAddTask } from './styles';
 import TaskElement from './Task';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 // Interface for props
 export type PegaExtensionsTaskListProps = {
@@ -66,7 +67,7 @@ export const PegaExtensionsTaskList = (props: PegaExtensionsTaskListProps) => {
     setIsLoading(true);
     try {
       const pConn = getPConnect();
-      const CaseInstanceKey = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+      const CaseInstanceKey = createPlatform(() => pConn).caseInfo.key();
       const payload = {
         dataViewParameters: [{ pyID: CaseInstanceKey }],
       };

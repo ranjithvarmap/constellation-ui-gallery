@@ -2,6 +2,7 @@ import { withConfiguration, Banner } from '@pega/cosmos-react-core';
 import { useCallback, useEffect, useState } from 'react';
 import MainContent from './styles';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type BannerProps = {
   /** Display type of rendering
@@ -26,7 +27,7 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
   const [isDismissed, setIsDismissed] = useState(false);
 
   const updateItemDetails = () => {
-    const caseInstanceKey = getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+    const caseInstanceKey = createPlatform(getPConnect).caseInfo.key();
     const context = getPConnect().getContextName();
 
     (window as any).PCore.getDataApiUtils()
@@ -39,9 +40,9 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
   };
 
   const refreshForm = useCallback(() => {
-    const caseInstanceKey = getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+    const caseInstanceKey = createPlatform(getPConnect).caseInfo.key();
 
-    const className = getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_CLASSID);
+    const className = createPlatform(getPConnect).caseInfo.className();
     (window as any).PCore.getRestClient()
       .invokeRestApi('loadView', {
         queryPayload: {
@@ -58,7 +59,7 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
   const dismissCaseWideAction = () => {
     const dataObj = getPConnect().getDataObject(getPConnect().getContextName());
 
-    const caseInstanceKey = getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+    const caseInstanceKey = createPlatform(getPConnect).caseInfo.key();
 
     getPConnect()
       .getContainerManager()
@@ -121,7 +122,7 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
     (dismissed?: boolean) => {
       if (dataPage) {
         const pConn = getPConnect();
-        const CaseInstanceKey = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+        const CaseInstanceKey = createPlatform(() => pConn).caseInfo.key();
         const payload = {
           dataViewParameters: [{ pyID: CaseInstanceKey, ...(dismissed ? { dismissed: true } : null) }],
         };
@@ -144,7 +145,7 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
 
   /* Initial Load of the content - Subscribe to changes to the assignment case */
   useEffect(() => {
-    const caseID = getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+    const caseID = createPlatform(getPConnect).caseInfo.key();
     const filter = {
       matcher: 'TASKLIST',
       criteria: {

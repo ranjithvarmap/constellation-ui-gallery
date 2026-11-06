@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type AutoSaveProps = {
   propertyName: string;
@@ -16,10 +17,9 @@ export const PegaExtensionsAutoSave = (props: AutoSaveProps) => {
       /* Get the current case etag */
       const etag = pConn.getValue('caseInfo.headers.etag');
 
-      const assignmentID = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.ASSIGNMENT_ID);
-      const actionID = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.ACTIVE_ACTION_ID)
-        ? pConn.getValue((window as any).PCore.getConstants().CASE_INFO.ACTIVE_ACTION_ID)
-        : pConn.getValue((window as any).PCore.getConstants().CASE_INFO.ASSIGNMENTACTION_ID);
+      const caseInfo = createPlatform(() => pConn).caseInfo;
+      const assignmentID = caseInfo.assignmentId();
+      const actionID = caseInfo.actionId();
 
       /* Payload to resolve dx api */
       const payload = {

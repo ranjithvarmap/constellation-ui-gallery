@@ -10,6 +10,7 @@ import {
 } from '@pega/cosmos-react-core';
 
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 import { useRef, useState, useEffect } from 'react';
 import StyledList from './styles';
 
@@ -105,7 +106,7 @@ export const PegaExtensionsDisplayPDF = (props: DisplayPDFProps) => {
     if (dataPage && getPConnect) {
       const pConn = getPConnect();
 
-      const CaseInstanceKey = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+      const CaseInstanceKey = createPlatform(() => pConn).caseInfo.key();
       const payload = {
         dataViewParameters: [{ caseInstanceKey: CaseInstanceKey }],
       };

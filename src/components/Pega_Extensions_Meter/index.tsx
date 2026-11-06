@@ -1,5 +1,6 @@
 import { withConfiguration, useTheme, FieldGroup, Flex, FormField, createUID } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 import { StyledFieldGroupElementMeter, StyleGroupMeterWrapper } from './styles';
 
 import { useEffect, useState } from 'react';
@@ -76,7 +77,7 @@ export const PegaExtensionsMeter = (props: MeterProps) => {
   useEffect(() => {
     if (dataPage) {
       const pConn = getPConnect();
-      const CaseInstanceKey = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+      const CaseInstanceKey = createPlatform(() => pConn).caseInfo.key();
       const payload = {
         dataViewParameters: [{ pyID: CaseInstanceKey }],
       };

@@ -24,8 +24,8 @@ through `createPlatform(getPConnect)`.
 `getPConnect()` itself is not `PCore`. Calls such as `getActionsApi()`, `getValue()`,
 `getLocalizedValue()` and `getStateProps()` are made directly. The exception is a
 value that needs a `PCore` constant to look up. For example,
-`getValue(PCore.getConstants().CASE_INFO.CASE_INFO_ID)` is a `PCore` access and
-belongs behind the facade.
+`getValue(PCore.getConstants().CASE_INFO.CASE_INFO_ID)` is a `PCore` access; use
+`platform.caseInfo.key()` instead.
 
 To check a component:
 
@@ -48,6 +48,7 @@ platform.links.caseUrl({ caseKey, className, workId });
 platform.caseActions.preview(caseKey, className);
 platform.contextTree.registerPageList({ pageListName: '.Items', className, pageReference });
 platform.text.loadingContent();
+const caseKey = platform.caseInfo.key(); // also className(), assignmentId(), actionId(), …
 ```
 
 The JSDoc in `types.ts` is the reference for each member. Read it rather than
@@ -61,6 +62,12 @@ guessing parameters.
   call the lock or patch APIs separately.
 - `contextTree.registerPageList` does nothing on platforms that lack the context
   tree manager. Check `contextTree.available` only if behaviour must differ.
+- `caseInfo` reads the store each time you call it, and nothing is cached, so read
+  inside the handler that needs the value. Values come back unchanged (`''` stays
+  `''`), and on a page with no case nothing throws. `actionId()` returns the
+  active action, falling back to the assignment's own action.
+- To read through a PConnect other than the component's own (a `pConn` captured
+  in a hook, a child's PConnect), pass that object: `createPlatform(() => pConn)`.
 
 ## When the API you need is missing
 
@@ -101,6 +108,14 @@ one coherent API:
   interfaces in `types.ts` are what callers depend on, so type them exactly.
 - **Don't add a member for a single caller unless it hides `PCore`.** A thin
   wrapper over a `getPConnect()` call adds nothing.
+- **Preserve behaviour over elegance.** If a native PConnect accessor looks
+  equivalent to the raw read but you can't confirm it without a server, keep the
+  exact read and note the possible switch in `index.ts`. `caseInfo` does this:
+  `getCaseInfo().getKey()` probably matches `getValue(CASE_INFO_ID)`, but that is
+  unproven.
+- **Make the fake able to catch a wrong read.** Give each value a distinct key and
+  a distinct test value. A fake that returns the same thing for every path lets a
+  member read the wrong field and still pass.
 
 ## Stories and tests
 
@@ -117,14 +132,15 @@ export const Default: Story = {
 };
 ```
 
-| Option                        | Use                                                                                 |
-| ----------------------------- | ----------------------------------------------------------------------------------- |
-| `rows`                        | What `caseData.query` resolves with                                                 |
-| `detailData`                  | `dataInfo` for detail-view fetches                                                  |
-| `renderView`                  | What a loaded detail view renders; defaults to a `data-testid="detail-view"` marker |
-| `pConnect`                    | Override or add `getPConnect()` methods, e.g. `getValue`                            |
-| `actions`                     | Override or add actions-API methods, e.g. make `openLocalAction` visible in a story |
-| `contextTreeAvailable: false` | Simulate an older platform                                                          |
+| Option                        | Use                                                                                                        |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `rows`                        | What `caseData.query` resolves with                                                                        |
+| `detailData`                  | `dataInfo` for detail-view fetches                                                                         |
+| `renderView`                  | What a loaded detail view renders; defaults to a `data-testid="detail-view"` marker                        |
+| `pConnect`                    | Override or add `getPConnect()` methods, e.g. `getValue`                                                   |
+| `actions`                     | Override or add actions-API methods, e.g. make `openLocalAction` visible in a story                        |
+| `contextTreeAvailable: false` | Simulate an older platform                                                                                 |
+| `caseInfo`                    | The case `platform.caseInfo` reads (`key`, `className`, `activeActionId`, …); omit for a page with no case |
 
 - For a component that never touches `PCore`, use
   `createFakeGetPConnect(overrides)`. It doesn't install a global and doesn't

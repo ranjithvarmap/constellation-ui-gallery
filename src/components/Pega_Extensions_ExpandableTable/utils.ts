@@ -1,3 +1,5 @@
+import { createPlatform } from '../shared/platform';
+
 const loadedViewResources = new Set<string>();
 
 type LoadRowDetailProps = {
@@ -154,7 +156,7 @@ const ensureViewResources = async (detailViewName: string, embedClass: string, g
   const pConnect = getPConnect();
   const caseInstanceKey =
     pConnect.getCaseInfo?.()?.getKey?.() ||
-    pConnect.getValue?.((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+    (pConnect.getValue ? createPlatform(() => pConnect).caseInfo.key() : undefined);
 
   const response = await (window as any).PCore.getRestClient().invokeRestApi(
     'loadView',

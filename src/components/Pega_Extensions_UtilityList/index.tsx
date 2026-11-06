@@ -16,6 +16,7 @@ import * as informationIcon from '@pega/cosmos-react-core/lib/components/Icon/ic
 import * as clipboardIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/clipboard.icon';
 import { renderObjectField } from './utils';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type UtilityListProps = {
   heading?: string;
@@ -62,7 +63,7 @@ export const PegaExtensionsUtilityList = (props: UtilityListProps) => {
   const [objects, setObjects] = useState<Array<SummaryListItem>>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const viewAllModalRef = useRef<ModalMethods<any>>();
-  const caseID = getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+  const caseID = createPlatform(getPConnect).caseInfo.key();
 
   const publishUtilityUpdated = (count: any) => {
     (window as any).PCore.getPubSubUtils().publish('WidgetUpdated', {
@@ -110,7 +111,7 @@ export const PegaExtensionsUtilityList = (props: UtilityListProps) => {
   useEffect(() => {
     if (dataPage) {
       const pConn = getPConnect();
-      const CaseInstanceKey = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+      const CaseInstanceKey = createPlatform(() => pConn).caseInfo.key();
       const payload = {
         dataViewParameters: [{ CaseInstanceKey }],
       };

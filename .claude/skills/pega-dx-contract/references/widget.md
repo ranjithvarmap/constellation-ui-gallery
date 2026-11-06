@@ -33,14 +33,15 @@ Mark properties the widget cannot work without as `required: true` in
 
 All of it goes through `createPlatform(getPConnect)`:
 
-| Need                                       | Facade member                                                                 |
-| ------------------------------------------ | ----------------------------------------------------------------------------- |
-| Query a data page                          | `platform.caseData.query(dataView, options)`                                  |
-| Update case fields (edit lock handled)     | `platform.caseData.updateFields(caseKey, fields)`                             |
-| Render a case's view inline                | `platform.views.loadDetailView({ dataPage, viewName, id, className })`        |
-| React to submit, save or dashboard filters | `platform.events.on('assignmentSubmission', handler)` → returns `Unsubscribe` |
-| Loading text and other platform strings    | `platform.text.loadingContent()`                                              |
-| Case URLs, case actions, context tree      | `platform.links`, `platform.caseActions`, `platform.contextTree`              |
+| Need                                       | Facade member                                                                  |
+| ------------------------------------------ | ------------------------------------------------------------------------------ |
+| The case it is on (key, class, assignment) | `platform.caseInfo.key()`, `className()`, `assignmentId()`; on a page, no case |
+| Query a data page                          | `platform.caseData.query(dataView, options)`                                   |
+| Update case fields (edit lock handled)     | `platform.caseData.updateFields(caseKey, fields)`                              |
+| Render a case's view inline                | `platform.views.loadDetailView({ dataPage, viewName, id, className })`         |
+| React to submit, save or dashboard filters | `platform.events.on('assignmentSubmission', handler)` → returns `Unsubscribe`  |
+| Loading text and other platform strings    | `platform.text.loadingContent()`                                               |
+| Case URLs, case actions, context tree      | `platform.links`, `platform.caseActions`, `platform.contextTree`               |
 
 Open a local action (edit modal) with `getPConnect().getActionsApi().openLocalAction(...)`.
 That's a PConnect call, so making it directly is fine.

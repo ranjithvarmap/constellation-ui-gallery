@@ -72,8 +72,8 @@ Naming is fixed: the folder name, `config.json` `name` and `componentKey` are al
    never read. Only remove entries from `tools/config-parity/known-drift.json`;
    never add them.
 3. **No `PCore` global.** Use `createPlatform(getPConnect)` from
-   `../shared/platform`. It exposes `context`, `caseData`, `text`, `views`,
-   `events`, `links`, `caseActions` and `contextTree`. If something is missing,
+   `../shared/platform`. It exposes `context`, `caseData`, `caseInfo`, `text`,
+   `views`, `events`, `links`, `caseActions` and `contextTree`. If something is missing,
    extend `types.ts`, `index.ts` and `fake.ts` in the same change. `getPConnect()`
    calls such as `getActionsApi()`, `getValue()` and `getLocalizedValue()` are fine
    to make directly.
