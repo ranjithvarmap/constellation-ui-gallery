@@ -60,6 +60,18 @@ export type PlatformFakeOptions = {
   restResponses?: Record<string, { data?: unknown; headers?: Record<string, string> }>;
   /** Make `caseData.query` reject with this error, for a component's error state. */
   queryError?: Error;
+  /**
+   * The redux store's `data`, keyed by context name, as `getStore().getState()`
+   * returns it, e.g. `{ 'app/primary_1': { caseInfo: { content: { … } } } }`.
+   */
+  store?: Record<string, unknown>;
+  /**
+   * Further values `getPConnect().getValue(path)` returns, by path, beside the
+   * caseInfo ones, e.g. `{ 'caseInfo.headers.etag': 'e-1', '.Notes': 'draft' }`.
+   */
+  values?: Record<string, unknown>;
+  /** What `getContainerUtils().getContainerItemData(target, context)` returns, by context. */
+  containerItems?: Record<string, unknown>;
 };
 
 /** One field per `platform.caseInfo` read, plus the two `actionId` chooses between. */
@@ -116,6 +128,18 @@ export type PageCall = {
   args: unknown[];
 };
 
+/** One registration with the cascade manager. */
+export type CascadeRegistration = {
+  context: string;
+  pageReference: string;
+  fields: string[];
+  id: unknown;
+  /** False once the same callback and id are unregistered. */
+  active: boolean;
+  /** Fire the registered callback, as a change to one of the fields would. */
+  notify: () => void;
+};
+
 export type PlatformFake = {
   /**
    * A `getPConnect` wired into the same recorder, so PConnect-side actions
@@ -148,6 +172,13 @@ export type PlatformFake = {
     etagUpdates: { context: string; etag: string }[];
     /** Components asked of the asset loader. */
     loadedComponents: string[];
+    /** Actions dispatched to the redux store. */
+    dispatched: unknown[];
+    /**
+     * Fields registered with the cascade manager. `notify()` fires the
+     * callback, as the platform does when one of the fields changes.
+     */
+    cascades: CascadeRegistration[];
   };
   /** True when every subscription taken out has been detached again. */
   allUnsubscribed(): boolean;
@@ -268,6 +299,9 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     caseInfo,
     restResponses = {},
     queryError,
+    store = {},
+    values = {},
+    containerItems = {},
   } = options;
 
   const calls: PlatformFake['calls'] = {
@@ -286,6 +320,8 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     restCalls: [],
     etagUpdates: [],
     loadedComponents: [],
+    dispatched: [],
+    cascades: [],
   };
 
   const previous = (window as any).PCore;
@@ -326,6 +362,25 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
   const fake: any = {
     getDataApiUtils: () => dataApiUtils,
 
+    getCascadeManager: () => ({
+      registerFields: (context: string, pageReference: string, fields: string[], callback: () => void, id: unknown) => {
+        calls.cascades.push({ context, pageReference, fields, id, active: true, notify: callback });
+      },
+      unRegisterFields: (
+        _context: string,
+        _pageReference: string,
+        _fields: string[],
+        callback: () => void,
+        id: unknown,
+      ) => {
+        calls.cascades
+          .filter((registration) => registration.notify === callback && registration.id === id)
+          .forEach((registration) => {
+            registration.active = false;
+          });
+      },
+    }),
+
     /* Every component counts as loaded, so a layout never waits on the loader. */
     getComponentsRegistry: () => ({ getLazyComponent: (name: string) => name }),
 
@@ -346,6 +401,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     }),
 
     getContainerUtils: () => ({
+      getContainerItemData: (_target: string, context: string) => containerItems[context],
       updateCaseContextEtag: (context: string, newEtag: string) => {
         calls.etagUpdates.push({ context, etag: newEtag });
       },
@@ -408,7 +464,12 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
       getLocaleValue: (value: string) => value,
     }),
 
-    getStore: () => ({ getState: () => ({ data: {} }), dispatch: () => {} }),
+    getStore: () => ({
+      getState: () => ({ data: store }),
+      dispatch: (action: unknown) => {
+        calls.dispatched.push(action);
+      },
+    }),
   };
 
   if (contextTreeAvailable) {
@@ -423,7 +484,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
   (window as any).PCore = fake;
 
   return {
-    getPConnect: buildGetPConnect(calls, pConnect, contextName, actions, caseInfoValues(caseInfo)),
+    getPConnect: buildGetPConnect(calls, pConnect, contextName, actions, { ...values, ...caseInfoValues(caseInfo) }),
     calls,
     allUnsubscribed: () => calls.subscriptions.every((s) => !s.active),
     restore: () => {
