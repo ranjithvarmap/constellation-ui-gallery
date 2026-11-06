@@ -46,7 +46,7 @@ const view = await platform.views.loadDetailView({ dataPage, viewName, id, class
 useEffect(() => platform.events.on('assignmentSubmission', reload), []);
 platform.links.caseUrl({ caseKey, className, workId });
 platform.caseActions.preview(caseKey, className);
-platform.contextTree.registerPageList({ pageListName: '.Items', className, pageReference });
+platform.contextTree.registerPageList({ pageReference, viewName: getPConnect().meta.name, pageListName: '.Items' });
 platform.text.loadingContent();
 const caseKey = platform.caseInfo.key(); // also className(), assignmentId(), actionId(), …
 

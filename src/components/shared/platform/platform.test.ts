@@ -17,9 +17,7 @@ describe('platform facade', () => {
 
       await platform.caseData.updateFields('CASE-1', { pyStatusWork: 'Resolved-Completed' });
 
-      expect(fake.calls.fieldUpdates).toEqual([
-        { caseKey: 'CASE-1', fields: { pyStatusWork: 'Resolved-Completed' } },
-      ]);
+      expect(fake.calls.fieldUpdates).toEqual([{ caseKey: 'CASE-1', fields: { pyStatusWork: 'Resolved-Completed' } }]);
     });
 
     it('does not patch when the lock cannot be taken', async () => {
@@ -28,9 +26,7 @@ describe('platform facade', () => {
       });
       const platform = createPlatform(fake.getPConnect);
 
-      await expect(platform.caseData.updateFields('CASE-1', { x: 1 })).rejects.toThrow(
-        'locked by another operator',
-      );
+      await expect(platform.caseData.updateFields('CASE-1', { x: 1 })).rejects.toThrow('locked by another operator');
       expect(fake.calls.fieldUpdates).toEqual([]);
     });
   });
@@ -107,14 +103,19 @@ describe('platform facade', () => {
     it('registers a page list when the platform supports it', () => {
       const platform = createPlatform(fake.getPConnect);
 
+      /* The values from the platform's own addPageListNode example. */
       platform.contextTree.registerPageList({
-        pageListName: '.Items',
-        className: 'Data-Item',
         pageReference: 'caseInfo.content',
+        viewName: 'TOP_EmbeddedData_5',
+        pageListName: '.EmbeddedData',
       });
 
       expect(platform.contextTree.available).toBe(true);
-      expect(fake.calls.registeredPageLists).toHaveLength(1);
+      /* Exact arguments, in the platform's order: a count alone let a swapped
+         view name and list name through once. */
+      expect(fake.calls.registeredPageLists).toEqual([
+        ['app/primary_1', 'caseInfo.content', 'TOP_EmbeddedData_5', '.EmbeddedData'],
+      ]);
     });
 
     it('no-ops on platforms without a context tree manager, instead of throwing', () => {
@@ -125,9 +126,9 @@ describe('platform facade', () => {
       expect(platform.contextTree.available).toBe(false);
       expect(() =>
         platform.contextTree.registerPageList({
-          pageListName: '.Items',
-          className: 'Data-Item',
           pageReference: 'caseInfo.content',
+          viewName: 'Items',
+          pageListName: '.Items',
         }),
       ).not.toThrow();
       expect(fake.calls.registeredPageLists).toHaveLength(0);
@@ -140,9 +141,7 @@ describe('platform facade', () => {
       const bareGetPConnect = (() => ({})) as any;
       const platform = createPlatform(bareGetPConnect);
 
-      expect(() =>
-        platform.links.caseUrl({ caseKey: 'ABC!CASE', className: 'Work-My', workId: 'C-1' }),
-      ).not.toThrow();
+      expect(() => platform.links.caseUrl({ caseKey: 'ABC!CASE', className: 'Work-My', workId: 'C-1' })).not.toThrow();
     });
 
     it('resolves the context only once', () => {

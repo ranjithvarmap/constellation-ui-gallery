@@ -89,11 +89,7 @@ export interface CaseDataApi {
   updateFields(caseKey: string, fields: Record<string, unknown>): Promise<void>;
 
   /** Load a data-object view payload (metadata plus data) for one record. */
-  fetchDetailView(
-    dataPage: string,
-    viewName: string,
-    params: Record<string, string>,
-  ): Promise<DetailViewResponse>;
+  fetchDetailView(dataPage: string, viewName: string, params: Record<string, string>): Promise<DetailViewResponse>;
 
   /**
    * Load a case view (metadata plus case data) through the DX API.
@@ -195,15 +191,18 @@ export interface CaseActionsApi {
   preview(caseKey: string, className: string): void;
 }
 
+/**
+ * What `addPageListNode(contextName, pageName, viewName, pageListName)` takes,
+ * named. The platform's own example: page `caseInfo.content`, view
+ * `TOP_EmbeddedData_5`, list `.EmbeddedData`.
+ */
 export type RegisterPageListOptions = {
+  /** Page reference the list hangs off, e.g. `caseInfo.content`. */
+  pageReference: string;
+  /** View that renders the list; in the gallery, `getPConnect().meta.name`. */
+  viewName: string;
   /** Property path of the page list, e.g. `.Items`. */
   pageListName: string;
-  /** Class of the rows in that list. */
-  className: string;
-  /** Page reference the list hangs off. */
-  pageReference: string;
-  /** View name rendered for each row, when there is one. */
-  viewName?: string;
 };
 
 export interface ContextTreeApi {

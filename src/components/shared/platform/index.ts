@@ -63,9 +63,7 @@ const createCaseData = (getPConnect: GetPConnect, context: () => string): CaseDa
   updateFields: async (caseKey: string, fields: Record<string, unknown>) => {
     const lock = await pcore().getDataApiUtils().getCaseEditLock(caseKey, context());
     const payload: Record<string, unknown> = { [caseKey]: { ...fields } };
-    await pcore()
-      .getDataApiUtils()
-      .updateCaseEditFieldsData(caseKey, payload, lock.headers.etag, context());
+    await pcore().getDataApiUtils().updateCaseEditFieldsData(caseKey, payload, lock.headers.etag, context());
   },
 
   fetchDetailView: (dataPage: string, viewName: string, params: Record<string, string>) =>
@@ -106,14 +104,7 @@ const createDataObjects = (): DataObjectsApi => ({
 });
 
 const createViews = (getPConnect: GetPConnect, caseData: CaseDataApi): ViewsApi => ({
-  loadDetailView: async ({
-    dataPage,
-    viewName,
-    id,
-    className,
-    params,
-    configOverrides,
-  }: LoadDetailViewOptions) => {
+  loadDetailView: async ({ dataPage, viewName, id, className, params, configOverrides }: LoadDetailViewOptions) => {
     const response = await caseData.fetchDetailView(dataPage, viewName, params ?? { pyID: id });
 
     const { fetchViewResources, updateViewResources } = pcore().getViewResources();
@@ -147,7 +138,7 @@ const createViews = (getPConnect: GetPConnect, caseData: CaseDataApi): ViewsApi 
 });
 
 const createEvents = (): EventsApi => ({
-  on: <TPayload,>(
+  on: <TPayload>(
     event: PlatformEvent,
     handler: (payload: TPayload) => void,
     options: SubscribeOptions = {},
@@ -235,10 +226,8 @@ const GENERIC_BUNDLE = 'Generic';
 const GENERIC_PATH = '@BASECLASS!GENERIC!PYGENERICFIELDS';
 
 const createText = (): TextApi => ({
-  locale: (value: string, bundle: string, path: string) =>
-    pcore().getLocaleUtils().getLocaleValue(value, bundle, path),
-  loadingContent: () =>
-    pcore().getLocaleUtils().getLocaleValue('Loading content...', GENERIC_BUNDLE, GENERIC_PATH),
+  locale: (value: string, bundle: string, path: string) => pcore().getLocaleUtils().getLocaleValue(value, bundle, path),
+  loadingContent: () => pcore().getLocaleUtils().getLocaleValue('Loading content...', GENERIC_BUNDLE, GENERIC_PATH),
 });
 
 const createLinks = (): LinksApi => ({
@@ -270,11 +259,12 @@ const createContextTree = (context: () => string): ContextTreeApi => {
 
   return {
     available,
-    registerPageList: ({ pageListName, className, pageReference, viewName }: RegisterPageListOptions) => {
+    /* The platform's order is (contextName, pageName, viewName, pageListName).
+       It was once called here as (context, page, list, className, view), which
+       registered nothing usable; the test pins the order to Pega's example. */
+    registerPageList: ({ pageReference, viewName, pageListName }: RegisterPageListOptions) => {
       if (!available) return;
-      pcore()
-        .getContextTreeManager()
-        .addPageListNode(context(), pageReference, pageListName, className, viewName);
+      pcore().getContextTreeManager().addPageListNode(context(), pageReference, viewName, pageListName);
     },
   };
 };
