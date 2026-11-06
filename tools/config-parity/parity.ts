@@ -109,11 +109,11 @@ const findComponent = (source: ts.SourceFile, checker: ts.TypeChecker): ts.Signa
   return fallback;
 };
 
-/** Runtime sources for a component, excluding tests and stories. */
+/** Runtime sources for a component, excluding tests, stories and their fixtures. */
 const runtimeSource = (dir: string): string =>
   fs
     .readdirSync(dir)
-    .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.(test|stories)\./.test(file))
+    .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.(test|stories|fixtures)\./.test(file))
     .map((file) => fs.readFileSync(path.join(dir, file), 'utf8'))
     .join('\n');
 
@@ -132,9 +132,7 @@ export const checkParity = (componentsRoot: string, tsconfigPath: string): Parit
   const entries = dirs
     .map((dir) => ({
       dir,
-      file: ['index.tsx', 'index.ts']
-        .map((name) => path.join(componentsRoot, dir, name))
-        .find(fs.existsSync),
+      file: ['index.tsx', 'index.ts'].map((name) => path.join(componentsRoot, dir, name)).find(fs.existsSync),
     }))
     .filter((entry): entry is { dir: string; file: string } => Boolean(entry.file));
 

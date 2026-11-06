@@ -30,11 +30,13 @@ export type PlatformFakeOptions = {
   /** Etag handed back by the edit lock. */
   etag?: string;
   /**
-   * What a rendered detail view should look like. Receives the view metadata,
-   * whose `config` carries the record id, so a story can render real content.
+   * What a rendered detail view, or metadata rendered on a scoped page,
+   * should look like. Receives the metadata, whose `config` carries the record
+   * id or field, and the options the PConnect was created with, whose
+   * `pageReference` says which row, so a story can render real content.
    * Defaults to a marker node.
    */
-  renderView?: (meta: FakeViewMeta) => ReactNode;
+  renderView?: (meta: FakeViewMeta, options: Record<string, any>) => ReactNode;
   /** Set false to simulate a platform without the context tree manager. */
   contextTreeAvailable?: boolean;
   /** Context name reported by the fake PConnect. */
@@ -144,6 +146,8 @@ export type PlatformFake = {
     restCalls: { endpoint: string; payload: any; args: unknown[] }[];
     /** Etags stored on a case context after a write. */
     etagUpdates: { context: string; etag: string }[];
+    /** Components asked of the asset loader. */
+    loadedComponents: string[];
   };
   /** True when every subscription taken out has been detached again. */
   allUnsubscribed(): boolean;
@@ -281,6 +285,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     pageCalls: [],
     restCalls: [],
     etagUpdates: [],
+    loadedComponents: [],
   };
 
   const previous = (window as any).PCore;
@@ -321,6 +326,16 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
   const fake: any = {
     getDataApiUtils: () => dataApiUtils,
 
+    /* Every component counts as loaded, so a layout never waits on the loader. */
+    getComponentsRegistry: () => ({ getLazyComponent: (name: string) => name }),
+
+    getAssetLoader: () => ({
+      getLoader: () => (components: string[]) => {
+        calls.loadedComponents.push(...components);
+        return Promise.resolve();
+      },
+    }),
+
     getRestClient: () => ({
       invokeRestApi: (...args: unknown[]) => {
         const [endpoint, payload] = args as [string, any];
@@ -348,7 +363,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
       const pageReference: string = pageOptions.pageReference ?? '';
       const env: { index?: number; getPConnect: () => unknown } = {
         getPConnect: () => ({
-          createComponent: (meta?: FakeViewMeta) => renderView(meta ?? config.meta),
+          createComponent: (meta?: FakeViewMeta) => renderView(meta ?? config.meta, pageOptions),
           getContextName: () => pageOptions.contextName ?? pageOptions.context ?? contextName,
           getActionsApi: () => recordingApi(pageReference, 'actions'),
           getListActions: () => recordingApi(pageReference, 'listActions'),
@@ -376,7 +391,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
         calls.subscriptions.push({ event, id, active: true });
       },
       unsubscribe: (event: string, id: string) => {
-        const found = calls.subscriptions.find(s => s.event === event && s.id === id);
+        const found = calls.subscriptions.find((s) => s.event === event && s.id === id);
         if (found) found.active = false;
       },
       publish: () => {},
@@ -410,7 +425,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
   return {
     getPConnect: buildGetPConnect(calls, pConnect, contextName, actions, caseInfoValues(caseInfo)),
     calls,
-    allUnsubscribed: () => calls.subscriptions.every(s => !s.active),
+    allUnsubscribed: () => calls.subscriptions.every((s) => !s.active),
     restore: () => {
       (window as any).PCore = previous;
     },

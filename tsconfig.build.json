@@ -4,6 +4,8 @@
   "exclude": [
     "./src/**/*.test.ts",
     "./src/**/*.test.tsx",
+    "./src/**/*.fixtures.ts",
+    "./src/**/*.fixtures.tsx",
     "./src/**/__tests__/**",
     "./src/**/*.stories.tsx",
     "./src/**/*.stories.jsx"
