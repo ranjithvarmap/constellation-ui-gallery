@@ -69,14 +69,26 @@ Every Field has to handle all of these:
    label or control. Cosmos `Text` is typical.
 2. `displayMode === 'LABELS_LEFT'`: Cosmos `FieldValueList`,
    `variant={hideLabel ? 'stacked' : 'inline'}`.
-3. Editable or read-only: wrap the control in Cosmos `FormField` (or a Cosmos
-   input that includes it). Pass `label`, `labelHidden={hideLabel}`,
-   `info={validatemessage || helperText}`,
+3. Editable or read-only: pass the label props **to the Cosmos control itself**:
+   `label`, `labelHidden={hideLabel}`, `info={validatemessage || helperText}`,
    `status={validatemessage ? 'error' : undefined}`, `required`, `disabled`,
-   `readOnly` and `testId`. The generator hands `readOnly` to the control and
-   lets Cosmos render it read-only. Some hand-written Fields, such as `Toggle`,
-   instead return plain text when `readOnly` is set. Either is valid; pick one
-   and test it.
+   `readOnly` and `testId`. `Input`, `TextArea` and `Select` each render their
+   own `FormField` under the control's id, so the label and the info text are
+   linked to it. `Checkbox` takes `label`, `info` and `status` but has no
+   `labelHidden`; for a hidden label, pass `aria-label={label}` instead. The
+   generator hands `readOnly` to the control and lets Cosmos render it
+   read-only. Some hand-written Fields, such as `Toggle`, instead return plain
+   text when `readOnly` is set. Either is valid; pick one and test it.
+
+**Do not wrap a self-labelling control in an outer `FormField`.** The outer
+`FormField` makes its own id, which the control never carries, so the label
+points at nothing and screen readers announce an unlabelled field. Every
+generated Field had this bug until the generator was fixed, and 8 hand-written
+components still do (Toggle, StarRatingInput, SignatureCapture, Scheduler,
+QRCode, BarCode, DisplayPDF, and one TrendDisplay story). Use `FormField` only
+around something that can't label itself, such as a `Switch`, a canvas or a
+custom widget. Then give `FormField` and the inner element the **same `id`**.
+Check it with `screen.getByLabelText(label)`; the generator emits that test.
 
 When `hasSuggestions` is true, set the status to `'pending'`.
 

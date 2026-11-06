@@ -49,6 +49,17 @@ platform.caseActions.preview(caseKey, className);
 platform.contextTree.registerPageList({ pageListName: '.Items', className, pageReference });
 platform.text.loadingContent();
 const caseKey = platform.caseInfo.key(); // also className(), assignmentId(), actionId(), …
+
+// a row of an embedded list: write to it, edit the list, or render on it
+const row = platform.pages.at(`caseInfo.content.Items[${index}]`, { meta: props, target: getPConnect().getTarget() });
+row.actions.updateFieldValue('.IsSelected', true);
+platform.pages.at('caseInfo.content', { meta: props, referenceList: '.Items', index }).listActions.insert({}, index);
+const cell = row.render(fieldMeta);
+
+// named DX API operations
+platform.caseData.loadView({ caseKey, className, viewId: 'pyCaseSummary' });
+platform.caseData.saveAssignment({ assignmentId, actionId, etag, content: { Notes: 'draft' } });
+platform.dataObjects.create('D_Tasks', { Label: 'Call back' });
 ```
 
 The JSDoc in `types.ts` is the reference for each member. Read it rather than
@@ -68,6 +79,13 @@ guessing parameters.
   active action, falling back to the assignment's own action.
 - To read through a PConnect other than the component's own (a `pConn` captured
   in a hook, a child's PConnect), pass that object: `createPlatform(() => pConn)`.
+- `pages.at` is how a component writes to, edits, or renders on a page other
+  than its own, such as a row of an embedded list. Only `context` has a
+  default (the component's). Every other option is sent only when you pass it,
+  so pass exactly what the platform needs: `target` for actions, and
+  `referenceList` (plus `index` for an insert) for list actions.
+- `saveAssignment` sends the save and then stores the returned etag. Never call
+  the REST save on its own, or the next write fails as stale.
 
 ## When the API you need is missing
 
@@ -141,14 +159,16 @@ export const Default: Story = {
 | `actions`                     | Override or add actions-API methods, e.g. make `openLocalAction` visible in a story                        |
 | `contextTreeAvailable: false` | Simulate an older platform                                                                                 |
 | `caseInfo`                    | The case `platform.caseInfo` reads (`key`, `className`, `activeActionId`, …); omit for a page with no case |
+| `restResponses`               | What each REST endpoint resolves with, e.g. `{ save: { headers: { etag: 'e-2' } } }`                       |
 
 - For a component that never touches `PCore`, use
   `createFakeGetPConnect(overrides)`. It doesn't install a global and doesn't
   record.
 - In tests, assert on `platform.calls`: `queries`, `fieldUpdates`, `fieldValues`,
   `detailViews`, `subscriptions`, `openedCases`, `localActions`, `createdCases`,
-  `previewedCases` and `registeredPageLists`. After `unmount()`, assert
-  `platform.allUnsubscribed()`.
+  `previewedCases`, `registeredPageLists`, `pages` (each scope and the exact
+  options sent), `pageCalls` (every action run on a scoped page), `restCalls`
+  and `etagUpdates`. After `unmount()`, assert `platform.allUnsubscribed()`.
 - Call `restore()` in `afterEach`. It puts the previous global back.
 - If a component needs a `PCore` API the fake lacks, add it to `fake.ts`, not to
   the story.

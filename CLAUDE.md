@@ -29,7 +29,7 @@ case). Check `type` in `config.json` before changing a component.
    `config.json` and the props type separately — that is how they drift.
 2. **No `PCore` outside `shared/platform`.** Go through `createPlatform(getPConnect)`.
    If the API you need is missing, add it to `types.ts`, `index.ts` and `fake.ts`
-   together. 40 runtime files across 29 components still reach `PCore` directly;
+   together. 36 runtime files across 28 components still reach `PCore` directly;
    do not copy them. The `platform-facade` skill has the procedure and a coverage map.
 3. **Stories and tests use `installPlatformFake`**, not a hand-rolled
    `window.PCore = {...}` stub. 42 older stories still have one; do not copy them.
