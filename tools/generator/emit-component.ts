@@ -175,7 +175,25 @@ ${spec.properties
         spec.subtype === 'Text-Paragraph' ? 'HTMLTextAreaElement' : 'HTMLInputElement'
       }>) => {\n    actions.updateFieldValue(propName, event.target.value);\n  };`;
 
+  /* The control labels itself. Cosmos Input, TextArea and Select each render
+     their own FormField from these props, under the control's own id, so the
+     label's htmlFor and the info's aria-describedby both point at the control.
+     An outer FormField generates a second id that nothing carries, which left
+     every generated field unlabelled for assistive technology. Checkbox has no
+     labelHidden, so a hidden label becomes its accessible name instead. */
+  const info = `validatemessage${spec.inputSettings.includes('helperText') ? ' || helperText' : ''}`;
+  const labelling = isBoolean
+    ? `          label={hideLabel ? undefined : label}
+          aria-label={hideLabel ? label : undefined}
+          info={${info}}
+          status={status}`
+    : `          label={label}
+          labelHidden={hideLabel}
+          info={${info}}
+          status={status}`;
+
   const picklistMarkup = `        <${component}
+${labelling}
           value={value ?? ''}
           disabled={disabled}
           readOnly={readOnly}
@@ -199,6 +217,7 @@ ${
     ? picklistMarkup
     : isBoolean
     ? `        <${component}
+${labelling}
           checked={value}
           disabled={disabled}
           readOnly={readOnly}
@@ -208,6 +227,7 @@ ${
           testId={testId}
         />`
     : `        <${component}
+${labelling}
           ${extra}
           value={${isNumeric ? "value === undefined ? '' : String(value)" : "value ?? ''"}}${spec.inputSettings.includes('placeholder') ? '\n          placeholder={placeholder}' : ''}
           disabled={disabled}
@@ -225,7 +245,7 @@ ${
   );
 
   return `import { ${reactImports.join(', ')} } from 'react';
-import { withConfiguration, FormField, FormControl, FieldValueList, ${imports.join(', ')} } from '@pega/cosmos-react-core';
+import { withConfiguration, FieldValueList, ${imports.join(', ')} } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
 ${platformImport}import Styled${spec.componentName}Wrapper from './styles';
 
@@ -311,20 +331,7 @@ ${platformUse}
 
   return (
     <Styled${spec.componentName}Wrapper>
-      <FormField
-        label={label}
-        labelHidden={hideLabel}
-        info={validatemessage${spec.inputSettings.includes('helperText') ? ' || helperText' : ''}}
-        status={status}
-        testId={testId}
-        disabled={disabled}
-        readOnly={readOnly}
-        required={required}
-      >
-        <FormControl>
 ${controlMarkup}
-        </FormControl>
-      </FormField>
     </Styled${spec.componentName}Wrapper>
   );
 };
@@ -428,7 +435,24 @@ test.each([
   expect(control?.hasAttribute('required')).toBe(expected);
   expect(control?.hasAttribute('disabled')).toBe(expected);
 });
-${extra}`;
+
+/* Assistive technology finds a field by its label and reads its helper text as
+   the description. Both depend on the label and info pointing at the control's
+   own id; a hidden label must still name the control. */
+test.each([false, true])('names its control by the label when hideLabel is %s', (hideLabel) => {
+  render(<Default hideLabel={hideLabel} />);
+  expect(screen.getByLabelText('${spec.label}')).toBeInTheDocument();
+});
+${
+    spec.inputSettings.includes('helperText')
+      ? `
+test('describes its control with the helper text', () => {
+  render(<Default helperText='Shown beneath the field' />);
+  expect(screen.getByLabelText('${spec.label}')).toHaveAccessibleDescription('Shown beneath the field');
+});
+`
+      : ''
+  }${extra}`;
 };
 
 export const emitDocs = (spec: ResolvedSpec): string => {

@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { defineField, p } from './define';
+import { defineField, p, type FieldSubtype } from './define';
 import { renderComponent } from './render';
 import { declaredInConfig } from '../config-parity/parity';
 
@@ -187,6 +187,42 @@ describe('generated output', () => {
     const paragraph = defineField({ name: 'Notes', label: 'Notes', description: '', subtype: 'Text-Paragraph' });
     const source = renderComponent(paragraph).find((file) => file.name === 'index.tsx')!.contents;
     expect(source).toContain('ChangeEvent<HTMLTextAreaElement>');
+  });
+
+  /**
+   * Every generated field used to wrap its control in an outer FormField, whose
+   * own id the control never carried, so the label pointed at nothing. Cosmos
+   * controls render their own FormField under the control's id when handed the
+   * label props, which is what the generator now does.
+   */
+  describe('labelling', () => {
+    const indexFor = (subtype: FieldSubtype) =>
+      renderComponent(defineField({ name: 'Probe', label: 'Probe', description: '', subtype })).find(
+        (file) => file.name === 'index.tsx',
+      )!.contents;
+
+    it.each(['Text', 'Picklist', 'Text-Paragraph', 'Integer', 'Date', 'Boolean'] as FieldSubtype[])(
+      'hands the label props to the %s control instead of an outer FormField',
+      (subtype) => {
+        const source = indexFor(subtype);
+        expect(source).not.toMatch(/<FormField\b/);
+        expect(source).not.toMatch(/<FormControl\b/);
+        expect(source).toContain('info={validatemessage');
+        expect(source).toContain('status={status}');
+      },
+    );
+
+    it('keeps a hidden Boolean label as the checkbox accessible name', () => {
+      const source = indexFor('Boolean');
+      expect(source).toContain('label={hideLabel ? undefined : label}');
+      expect(source).toContain('aria-label={hideLabel ? label : undefined}');
+    });
+
+    it('emits tests that find the control by its label and description', () => {
+      const test = fileMap()['demo.test.tsx'];
+      expect(test).toContain("screen.getByLabelText('Sample field')");
+      expect(test).toContain('toHaveAccessibleDescription');
+    });
   });
 
   it('uses the shared platform fake in the generated story', () => {
