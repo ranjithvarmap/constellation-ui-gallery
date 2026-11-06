@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsCheckboxRow, type CheckboxRowProps } from './index';
+import { installCheckboxRowPlatform } from './demo.fixtures';
 
 export default {
   title: 'Fields/Checkbox Row',
@@ -38,117 +39,14 @@ export default {
   component: PegaExtensionsCheckboxRow,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getRestClient: () => {
-      return {
-        invokeRestApi: () => {
-          return Promise.resolve({
-            data: {
-              responseData: { test: '2' },
-            },
-          });
-        },
-      };
-    },
-    getContainerUtils: () => {
-      return {
-        getContainerItemData: () => {
-          return {
-            test: '1',
-          };
-        },
-      };
-    },
-    getStore: () => {
-      return {
-        getState: () => {
-          return {
-            data: {
-              context: {
-                dataInfo: {
-                  content: {
-                    test: '1',
-                  },
-                },
-              },
-            },
-          };
-        },
-        dispatch: () => {},
-      };
-    },
-  };
-};
-
-const setPConnect = () => {
-  return {
-    getStateProps: () => {
-      return {
-        value: 'C-123',
-      };
-    },
-    getContextName: () => {
-      return 'modal_1';
-    },
-    getTarget: () => {
-      return 'modal';
-    },
-    getActionsApi: () => {
-      return {
-        openWorkByHandle: () => {
-          /* nothing */
-        },
-        createWork: () => {
-          /* nothing */
-        },
-        updateFieldValue: () => {
-          /* nothing */
-        },
-        triggerFieldChange: () => {
-          /* nothing */
-        },
-        showCasePreview: () => {
-          /* nothing */
-        },
-      };
-    },
-    ignoreSuggestion: () => {
-      /* nothing */
-    },
-    acceptSuggestion: () => {
-      /* nothing */
-    },
-    setInheritedProps: () => {
-      /* nothing */
-    },
-    resolveConfigProps: () => {
-      /* nothing */
-    },
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsCheckboxRow>;
 
 const CheckboxRowDemo = (inputs: CheckboxRowProps) => {
   return {
     render: (args: CheckboxRowProps) => {
-      setPCore();
-      const props = {
-        ...args,
-        getPConnect: setPConnect,
-      };
-      return <PegaExtensionsCheckboxRow {...props} />;
+      /* The shared platform double, rather than a hand-rolled window.PCore stub. */
+      const platform = installCheckboxRowPlatform();
+      return <PegaExtensionsCheckboxRow {...args} getPConnect={platform.getPConnect} />;
     },
     args: inputs,
   };
