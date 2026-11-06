@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Slider, type SliderProps } from '@pega/cosmos-react-core';
+import { createPlatform } from '../shared/platform';
 
 type RatingElemProps = {
   value: number;
@@ -26,16 +27,10 @@ const RatingElem = (props: RatingElemProps) => {
      Using useMemo to cache the actionsApi object to only create it once and not when changing tabs
      path should be set to the embedded object name like '.Ratings' */
   const actionsApi: any = useMemo(() => {
-    const messageConfig = {
+    return createPlatform(getPConnect).pages.at(`caseInfo.content${path}[${propIndex}]`, {
       meta: props,
-      options: {
-        context: getPConnect().getContextName(),
-        pageReference: `caseInfo.content${path}[${propIndex}]`,
-        target: getPConnect().getTarget(),
-      },
-    };
-    const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-    return c11nEnv.getPConnect().getActionsApi();
+      target: getPConnect().getTarget(),
+    }).actions;
   }, [getPConnect]);
 
   const onChangeValue = (changeValue: number) => {

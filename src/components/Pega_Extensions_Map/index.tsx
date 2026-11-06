@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyledClearBtn, StyledPegaExtensionsMap } from './styles';
 import { getAllFields, renderShapes, createGraphic, deletePoints, addPoint, addScreenShot } from './utils';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 const ARCGIS_VERSION = '5.0';
 type MapProps = {
@@ -379,16 +380,10 @@ export const PegaExtensionsMap = (props: MapProps) => {
                 if (result?.feature?.geometry) {
                   const latitude = result.feature.geometry.latitude;
                   const longitude = result.feature.geometry.longitude;
-                  const messageConfig = {
+                  const actionsApi = createPlatform(getPConnect).pages.at(`caseInfo.content${locationRef}`, {
                     meta: props,
-                    options: {
-                      context: getPConnect().getContextName(),
-                      pageReference: `caseInfo.content${locationRef}`,
-                      target: getPConnect().getTarget(),
-                    },
-                  };
-                  const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-                  const actionsApi = c11nEnv.getPConnect().getActionsApi();
+                    target: getPConnect().getTarget(),
+                  }).actions;
                   actionsApi.updateFieldValue('.pyLatLon', `${latitude}, ${longitude}`);
                   actionsApi.updateFieldValue('.pyAddress', result.name);
                 }

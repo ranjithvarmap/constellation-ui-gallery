@@ -21,31 +21,17 @@ export const PegaExtensionsAutoSave = (props: AutoSaveProps) => {
       const assignmentID = caseInfo.assignmentId();
       const actionID = caseInfo.actionId();
 
-      /* Payload to resolve dx api */
-      const payload = {
-        queryPayload: {
-          assignmentID,
-          actionID,
-        },
-        body: {
-          content: {} as Record<string, any>,
-        },
-        headers: {
-          /* etag as part of header */
-          'if-match': etag,
-        },
-      };
+      const content: Record<string, any> = {};
       const lastSeparator = propertyName.lastIndexOf('.');
-      payload.body.content[propertyName.substring(lastSeparator + 1)] = pConn.getValue(propertyName);
+      content[propertyName.substring(lastSeparator + 1)] = pConn.getValue(propertyName);
 
-      /* Triggers save dx api */
-      (window as any).PCore.getRestClient()
-        .invokeRestApi('save', payload)
-        .then((response: any) => {
-          /* Upon successful, update the latest etag. */
-          const updatedEtag = response.headers.etag;
-          (window as any).PCore.getContainerUtils().updateCaseContextEtag(pConn.getContextName(), updatedEtag);
-        });
+      /* Saves the field, then stores the etag the save returns. */
+      createPlatform(() => pConn).caseData.saveAssignment({
+        assignmentId: assignmentID,
+        actionId: actionID,
+        etag,
+        content,
+      });
     };
     const subId = Date.now();
     /* Register field change event. */

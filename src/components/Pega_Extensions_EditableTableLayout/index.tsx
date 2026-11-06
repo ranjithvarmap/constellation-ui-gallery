@@ -15,6 +15,7 @@ import StyledPegaExtensionsEditableTableLayoutWrapper from './styles';
 import * as trashIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/trash.icon';
 import * as plusIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/plus.icon';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 import getAllFields from './utils';
 
 registerIcon(plusIcon, trashIcon);
@@ -37,18 +38,14 @@ export const PegaExtensionsEditableTableLayout = (props: TableLayoutProps) => {
 
   const addRow = () => {
     setNumRows((prevCount) => {
-      const messageConfig = {
-        meta: props,
-        options: {
-          context: getPConnect().getContextName(),
-          pageReference: 'caseInfo.content',
+      createPlatform(getPConnect)
+        .pages.at('caseInfo.content', {
+          meta: props,
           referenceList: `.${embedDataRef}`,
           viewName: getPConnect().options.viewName,
-        },
-      };
-      const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-      c11nEnv.index = prevCount;
-      c11nEnv.getPConnect().getListActions().insert({}, prevCount);
+          index: prevCount,
+        })
+        .listActions.insert({}, prevCount);
 
       return prevCount + 1;
     });
@@ -64,18 +61,13 @@ export const PegaExtensionsEditableTableLayout = (props: TableLayoutProps) => {
 
   const deleteRow = (index: number) => {
     setNumRows((prevCount) => {
-      const messageConfig = {
-        meta: props,
-        options: {
-          context: getPConnect().getContextName(),
-          pageReference: 'caseInfo.content',
+      createPlatform(getPConnect)
+        .pages.at('caseInfo.content', {
+          meta: props,
           referenceList: `.${embedDataRef}`,
           viewName: getPConnect().options.viewName,
-        },
-      };
-      const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-
-      c11nEnv.getPConnect().getListActions().deleteEntry(index);
+        })
+        .listActions.deleteEntry(index);
 
       return prevCount - 1;
     });
@@ -100,19 +92,14 @@ export const PegaExtensionsEditableTableLayout = (props: TableLayoutProps) => {
         displayMode: '',
       },
     };
-    const messageConfig = {
+    const page = createPlatform(getPConnect).pages.at(`caseInfo.content.${embedDataRef}[${index}]`, {
       meta: fieldInput,
-      options: {
-        context: getPConnect().getContextName(),
-        hasForm: true,
-        pageReference: `caseInfo.content.${embedDataRef}[${index}]`,
-        referenceList: `.${embedDataRef}`,
-        viewName: getPConnect().options.viewName,
-      },
-    };
-    const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
+      hasForm: true,
+      referenceList: `.${embedDataRef}`,
+      viewName: getPConnect().options.viewName,
+    });
 
-    return <td key={key}>{c11nEnv.getPConnect().createComponent(fieldInput)}</td>;
+    return <td key={key}>{page.render(fieldInput)}</td>;
   };
 
   useEffect(() => {

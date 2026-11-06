@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, type MouseEvent } from 'react';
 import { withConfiguration, Checkbox, Text } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 export type CheckboxTriggerProps = {
   getPConnect?: any;
@@ -93,11 +94,8 @@ export const PegaExtensionsCheckboxTrigger = (props: CheckboxTriggerProps) => {
           const newObj = { ...data };
           delete newObj?.classID;
           const bodyData = { ...newObj, ...key };
-          (window as any).PCore.getRestClient()
-            .invokeRestApi('createDataObject', {
-              body: { data: bodyData },
-              queryPayload: { data_view_ID: dataPage },
-            })
+          createPlatform(getPConnect)
+            .dataObjects.create(dataPage, bodyData)
             .then((resp: any) => {
               const respData = resp?.data?.responseData;
               const updateObj = { ...respData };

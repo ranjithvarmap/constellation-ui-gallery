@@ -16,6 +16,7 @@ import {
 import getAllFields from './utils';
 import { MainContent, FixPopover } from './styles';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 export interface DynamicHierarchicalFormProps {
   /** Heading for this view */
@@ -96,16 +97,10 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
   };
 
   const updateProducts = (index: number, IsSelected: boolean) => {
-    const messageConfig = {
+    const actionsApi = createPlatform(getPConnect).pages.at(`caseInfo.content.${productRef.current}[${index}]`, {
       meta: props,
-      options: {
-        context: getPConnect().getContextName(),
-        pageReference: `caseInfo.content.${productRef.current}[${index}]`,
-        target: getPConnect().getTarget(),
-      },
-    };
-    const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-    const actionsApi = c11nEnv.getPConnect().getActionsApi();
+      target: getPConnect().getTarget(),
+    }).actions;
     actionsApi?.updateFieldValue('.IsSelected', IsSelected);
     const tmpProducts = products.current.map((product, i) => {
       if (i === index) return { ...product, IsSelected };
@@ -220,17 +215,13 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
           getPConnect(),
           tmpFields[fieldId].ruleClass,
         );
-        const messageConfig = {
-          meta: metadata,
-          options: {
+        const myElem = createPlatform(getPConnect)
+          .pages.at(`caseInfo.content${tmpFields[fieldId].context}`, {
+            meta: metadata,
             contextName: getPConnect().getContextName(),
-            context: getPConnect().getContextName(),
-            pageReference: `caseInfo.content${tmpFields[fieldId].context}`,
             target: getPConnect().getTarget(),
-          },
-        };
-        const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-        const myElem = c11nEnv.getPConnect().createComponent(messageConfig.meta);
+          })
+          .render(metadata);
         tmpTabs.push({
           name: pyLabel,
           id,

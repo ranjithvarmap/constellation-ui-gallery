@@ -3,6 +3,7 @@ import { withConfiguration, Progress, Text } from '@pega/cosmos-react-core';
 import getAllFields from './utils';
 import DentalChart from './DentalChart';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 export type JawLayoutProps = {
   getPConnect?: any;
@@ -39,17 +40,13 @@ export const PegaExtensionsJawLayout = (props: JawLayoutProps) => {
         const stateProps = getPConnect().getStateProps();
         const parentPageRef = stateProps?.pageReference || getPConnect().getPageReference() || 'caseInfo.content';
         const finalPageRef = `${parentPageRef}${listPath.startsWith('.') ? '' : '.'}${listPath}[${index}]`;
-        const messageConfig = {
-          meta: props,
-          options: {
-            context: getPConnect().getContextName(),
-            pageReference: finalPageRef,
+        createPlatform(getPConnect)
+          .pages.at(finalPageRef, {
+            meta: props,
             referenceList: `.${listPath}`,
             target: getPConnect().getTarget(),
-          },
-        };
-        const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-        c11nEnv.getPConnect().getActionsApi()?.updateFieldValue(`.${statusPropName}`, newStatus);
+          })
+          .actions?.updateFieldValue(`.${statusPropName}`, newStatus);
       } catch (e) {
         console.error('❌ Error calling updateFieldValue:', e);
       }

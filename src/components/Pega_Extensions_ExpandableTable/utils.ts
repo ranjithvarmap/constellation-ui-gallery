@@ -94,7 +94,7 @@ export const buildRowPageReference = (
   return `${current}.${lastSegment}[${rowIndex}]`;
 };
 
-/** Builds the referenceList option for createPConnect. */
+/** Builds the referenceList option for a page scope (platform.pages.at). */
 export const buildReferenceList = (embedDataRef: string): string => {
   const listPath = normalizeListName(embedDataRef);
   if (!listPath.includes('[].')) {
@@ -158,17 +158,12 @@ const ensureViewResources = async (detailViewName: string, embedClass: string, g
     pConnect.getCaseInfo?.()?.getKey?.() ||
     (pConnect.getValue ? createPlatform(() => pConnect).caseInfo.key() : undefined);
 
-  const response = await (window as any).PCore.getRestClient().invokeRestApi(
-    'loadView',
-    {
-      queryPayload: {
-        caseClassName: embedClass,
-        caseID: caseInstanceKey,
-        viewID: detailViewName,
-      },
-    },
-    pConnect.getContextName(),
-  );
+  const response = await createPlatform(() => pConnect).caseData.loadView({
+    caseKey: caseInstanceKey,
+    className: embedClass,
+    viewId: detailViewName,
+    context: pConnect.getContextName(),
+  });
 
   await updateViewResources(response.data);
   loadedViewResources.add(cacheKey);
@@ -177,7 +172,7 @@ const ensureViewResources = async (detailViewName: string, embedClass: string, g
 /**
  * Lazy-loads and renders the detail view for an embedded page-list row.
  * Follows the DynamicHierarchicalForm pattern: fetch view metadata for the
- * embedded data class and bind createPConnect to the row pageReference.
+ * embedded data class and scope a PConnect to the row pageReference.
  */
 export const loadRowDetailView = async (props: LoadRowDetailProps) => {
   const { detailViewName, embedDataRef, rowIndex, getPConnect } = props;
@@ -199,19 +194,15 @@ export const loadRowDetailView = async (props: LoadRowDetailProps) => {
     embedClass,
   );
 
-  const messageConfig = {
-    meta: metadata,
-    options: {
-      contextName,
+  return createPlatform(() => pConnect)
+    .pages.at(pageReference, {
+      meta: metadata,
       context: contextName,
-      pageReference,
+      contextName,
       referenceList: buildReferenceList(embedDataRef),
       target: pConnect.getTarget(),
-    },
-  };
-
-  const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-  return c11nEnv.getPConnect().createComponent(messageConfig.meta);
+    })
+    .render(metadata);
 };
 
 /**

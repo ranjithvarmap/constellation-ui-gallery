@@ -1,6 +1,7 @@
 import type GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import type MapView from '@arcgis/core/views/MapView';
 import type { DefaultTheme } from 'styled-components';
+import { createPlatform } from '../shared/platform';
 
 export const getAllFields = (pConnect: any) => {
   const metadata = pConnect().getRawMetadata();
@@ -159,20 +160,12 @@ export const renderShapes = (ptLayer: GraphicsLayer, view: MapView, selectionPro
 };
 
 export const deletePoints = (getPConnect: any, props: any, embedDataRef: string, numPoints: number) => {
-  const messageConfig = {
+  const page = createPlatform(getPConnect).pages.at(`caseInfo.content${embedDataRef}`, {
     meta: props,
-    options: {
-      context: getPConnect().getContextName(),
-      pageReference: `caseInfo.content${embedDataRef}`,
-      target: getPConnect().getTarget(),
-    },
-  };
-  const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
+    target: getPConnect().getTarget(),
+  });
   for (let index = numPoints; index > 0; index -= 1) {
-    c11nEnv
-      .getPConnect()
-      .getListActions()
-      .deleteEntry(index - 1);
+    page.listActions.deleteEntry(index - 1);
   }
 };
 
@@ -186,16 +179,10 @@ export const addPoint = (
   x: any,
   webMercatorUtils: any,
 ) => {
-  const messageConfig = {
+  const actionsApi = createPlatform(getPConnect).pages.at(`caseInfo.content${embedDataRef}[${index}]`, {
     meta: props,
-    options: {
-      context: getPConnect().getContextName(),
-      pageReference: `caseInfo.content${embedDataRef}[${index}]`,
-      target: getPConnect().getTarget(),
-    },
-  };
-  const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-  const actionsApi = c11nEnv.getPConnect().getActionsApi();
+    target: getPConnect().getTarget(),
+  }).actions;
   const ll = webMercatorUtils.xyToLngLat(x[0], x[1]);
   actionsApi?.updateFieldValue(longitudePropRef, ll[0]);
   actionsApi?.updateFieldValue(latitudePropRef, ll[1]);
