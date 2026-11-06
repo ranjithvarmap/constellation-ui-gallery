@@ -223,6 +223,166 @@ describe('platform facade', () => {
     });
   });
 
+  describe('pages.at', () => {
+    const row = 'caseInfo.content.Items[2]';
+
+    it('sends only the options named, with context defaulting to the component', () => {
+      const createPConnect = jest.spyOn((window as any).PCore, 'createPConnect');
+      const meta = { type: 'Region', config: {} };
+
+      createPlatform(fake.getPConnect).pages.at(row, { meta, target: 'app/primary' });
+
+      /* toStrictEqual: an option the caller did not name must be absent, not
+         present as undefined, or the platform gets a different object. */
+      expect(createPConnect).toHaveBeenCalledWith({
+        meta,
+        options: { context: 'app/primary_1', pageReference: row, target: 'app/primary' },
+      });
+      expect(fake.calls.pages[0].options).toStrictEqual({
+        context: 'app/primary_1',
+        pageReference: row,
+        target: 'app/primary',
+      });
+    });
+
+    it('passes every named option through, and a given context wins', () => {
+      createPlatform(fake.getPConnect).pages.at(row, {
+        meta: {},
+        context: 'app/modal_2',
+        contextName: 'app/modal_2',
+        referenceList: '.Items',
+        viewName: 'Items',
+        hasForm: true,
+      });
+
+      expect(fake.calls.pages[0].options).toStrictEqual({
+        context: 'app/modal_2',
+        contextName: 'app/modal_2',
+        pageReference: row,
+        referenceList: '.Items',
+        viewName: 'Items',
+        hasForm: true,
+      });
+    });
+
+    it('writes to the scoped page, not the component', () => {
+      createPlatform(fake.getPConnect).pages.at(row, { meta: {} }).actions.updateFieldValue('.IsSelected', true);
+
+      expect(fake.calls.pageCalls).toEqual([
+        { pageReference: row, api: 'actions', method: 'updateFieldValue', args: ['.IsSelected', true] },
+      ]);
+      expect(fake.calls.fieldValues).toEqual([]);
+    });
+
+    it('sets the row index on the environment before a list insert reads it', () => {
+      const page = createPlatform(fake.getPConnect).pages.at('caseInfo.content', {
+        meta: {},
+        referenceList: '.Items',
+        index: 3,
+      });
+      page.listActions.insert({}, 3);
+
+      expect(fake.calls.pages[0].env.index).toBe(3);
+      expect(fake.calls.pages[0].options).not.toHaveProperty('index');
+      expect(fake.calls.pageCalls).toEqual([
+        { pageReference: 'caseInfo.content', api: 'listActions', method: 'insert', args: [{}, 3] },
+      ]);
+    });
+
+    it('renders metadata on the page and reports the context it resolved to', () => {
+      const page = createPlatform(fake.getPConnect).pages.at(row, { meta: {}, context: 'app/modal_2' });
+
+      /* The fake renders a marker element named after the metadata it was given. */
+      const element = page.render({ name: 'Quantity', config: {} }) as { props: { children: unknown } };
+
+      expect(element.props.children).toBe('Quantity');
+      expect(page.contextName).toBe('app/modal_2');
+    });
+  });
+
+  describe('REST operations', () => {
+    const reinstall = (options: Parameters<typeof installPlatformFake>[0]) => {
+      fake.restore();
+      fake = installPlatformFake(options);
+      return createPlatform(fake.getPConnect);
+    };
+
+    it('loads a case view, passing the context argument only when given', async () => {
+      const platform = createPlatform(fake.getPConnect);
+
+      await platform.caseData.loadView({ caseKey: 'C-1', className: 'Work-Claim', viewId: 'pyCaseSummary' });
+      await platform.caseData.loadView({
+        caseKey: 'C-1',
+        className: 'Work-Claim',
+        viewId: 'Details',
+        context: 'app/primary_1',
+      });
+
+      const [first, second] = fake.calls.restCalls;
+      expect(first.endpoint).toBe('loadView');
+      expect(first.payload).toEqual({
+        queryPayload: { caseClassName: 'Work-Claim', caseID: 'C-1', viewID: 'pyCaseSummary' },
+      });
+      /* Not even as undefined: a third argument changes the call. */
+      expect(first.args).toHaveLength(2);
+      expect(second.args).toEqual(['loadView', second.payload, 'app/primary_1']);
+    });
+
+    it('saves the assignment with the current etag, then stores the etag the save returns', async () => {
+      const platform = reinstall({ restResponses: { save: { headers: { etag: 'etag-after-save' } } } });
+
+      await platform.caseData.saveAssignment({
+        assignmentId: 'ASSIGN-1',
+        actionId: 'Review',
+        etag: 'etag-before-save',
+        content: { Notes: 'draft' },
+      });
+
+      expect(fake.calls.restCalls).toEqual([
+        {
+          endpoint: 'save',
+          payload: {
+            queryPayload: { assignmentID: 'ASSIGN-1', actionID: 'Review' },
+            body: { content: { Notes: 'draft' } },
+            headers: { 'if-match': 'etag-before-save' },
+          },
+          args: expect.any(Array),
+        },
+      ]);
+      expect(fake.calls.etagUpdates).toEqual([{ context: 'app/primary_1', etag: 'etag-after-save' }]);
+    });
+
+    it('does not store an etag when the save fails', async () => {
+      const platform = createPlatform(fake.getPConnect);
+      (window as any).PCore.getRestClient = () => ({
+        invokeRestApi: () => Promise.reject(new Error('409 conflict')),
+      });
+
+      await expect(
+        platform.caseData.saveAssignment({ assignmentId: 'A', actionId: 'B', etag: 'e', content: {} }),
+      ).rejects.toThrow('409 conflict');
+      expect(fake.calls.etagUpdates).toEqual([]);
+    });
+
+    it('creates and updates records through a savable data page', async () => {
+      const platform = createPlatform(fake.getPConnect);
+
+      await platform.dataObjects.create('D_Tasks', { Label: 'Call back' });
+      await platform.dataObjects.update('D_Tasks', { Id: 'T-1', IsCompleted: true });
+
+      expect(fake.calls.restCalls.map(({ endpoint, payload }) => ({ endpoint, payload }))).toEqual([
+        {
+          endpoint: 'createDataObject',
+          payload: { body: { data: { Label: 'Call back' } }, queryPayload: { data_view_ID: 'D_Tasks' } },
+        },
+        {
+          endpoint: 'updateDataObject',
+          payload: { queryPayload: { data_view_ID: 'D_Tasks' }, body: { data: { Id: 'T-1', IsCompleted: true } } },
+        },
+      ]);
+    });
+  });
+
   describe('text', () => {
     it('names the loading string that 13 components spell out by hand', () => {
       const platform = createPlatform(fake.getPConnect);

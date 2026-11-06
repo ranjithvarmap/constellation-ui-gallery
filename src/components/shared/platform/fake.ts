@@ -51,6 +51,11 @@ export type PlatformFakeOptions = {
    * Omit for a page with no case.
    */
   caseInfo?: FakeCaseInfo;
+  /**
+   * What the REST client resolves with, by endpoint (`loadView`, `save`,
+   * `createDataObject`, …). Unlisted endpoints resolve with an empty response.
+   */
+  restResponses?: Record<string, { data?: unknown; headers?: Record<string, string> }>;
 };
 
 /** One field per `platform.caseInfo` read, plus the two `actionId` chooses between. */
@@ -99,6 +104,14 @@ const caseInfoValues = (caseInfo: FakeCaseInfo = {}): Record<string, unknown> =>
   return Object.fromEntries(byPath.filter(([, value]) => value !== undefined));
 };
 
+/** One call made through a scoped page's `actions` or `listActions`. */
+export type PageCall = {
+  pageReference: string;
+  api: 'actions' | 'listActions';
+  method: string;
+  args: unknown[];
+};
+
 export type PlatformFake = {
   /**
    * A `getPConnect` wired into the same recorder, so PConnect-side actions
@@ -118,6 +131,17 @@ export type PlatformFake = {
     previewedCases: { caseKey: string; className: string }[];
     fieldValues: { property: string; value: unknown }[];
     registeredPageLists: unknown[][];
+    /**
+     * Each PConnect created, by `pages.at` or to host a detail view: the page,
+     * the exact options sent, and the env (for `index`).
+     */
+    pages: { pageReference: string; options: Record<string, unknown>; env: { index?: number } }[];
+    /** Every action or list action run against a scoped page. */
+    pageCalls: PageCall[];
+    /** Every REST call: endpoint, payload, and the exact arguments passed. */
+    restCalls: { endpoint: string; payload: any; args: unknown[] }[];
+    /** Etags stored on a case context after a write. */
+    etagUpdates: { context: string; etag: string }[];
   };
   /** True when every subscription taken out has been detached again. */
   allUnsubscribed(): boolean;
@@ -230,6 +254,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     pConnect = {},
     actions = {},
     caseInfo,
+    restResponses = {},
   } = options;
 
   const calls: PlatformFake['calls'] = {
@@ -243,9 +268,30 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     previewedCases: [],
     fieldValues: [],
     registeredPageLists: [],
+    pages: [],
+    pageCalls: [],
+    restCalls: [],
+    etagUpdates: [],
   };
 
   const previous = (window as any).PCore;
+
+  /* Records every method called on it, whatever its name, so a scoped page's
+     actions and list actions need no per-method stubs. `then` is left
+     undefined so the object is never mistaken for a promise. */
+  const recordingApi = (pageReference: string, api: PageCall['api']) =>
+    new Proxy(
+      {},
+      {
+        get: (_target, method) => {
+          if (typeof method !== 'string' || method === 'then') return undefined;
+          return (...args: unknown[]) => {
+            calls.pageCalls.push({ pageReference, api, method, args });
+            return Promise.resolve({});
+          };
+        },
+      },
+    );
 
   const dataApiUtils = {
     getData: (dataView: string, opts: unknown) => {
@@ -266,17 +312,42 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
   const fake: any = {
     getDataApiUtils: () => dataApiUtils,
 
+    getRestClient: () => ({
+      invokeRestApi: (...args: unknown[]) => {
+        const [endpoint, payload] = args as [string, any];
+        calls.restCalls.push({ endpoint, payload, args });
+        const response = restResponses[endpoint] ?? {};
+        return Promise.resolve({ data: response.data ?? {}, headers: response.headers ?? {} });
+      },
+    }),
+
+    getContainerUtils: () => ({
+      updateCaseContextEtag: (context: string, newEtag: string) => {
+        calls.etagUpdates.push({ context, etag: newEtag });
+      },
+    }),
+
     getViewResources: () => ({
       updateViewResources: () => Promise.resolve(),
       fetchViewResources: (viewName: string) => ({ name: viewName, config: {} }),
     }),
 
-    createPConnect: (config: any) => ({
-      getPConnect: () => ({
-        createComponent: () => renderView(config.meta),
-        getContextName: () => contextName,
-      }),
-    }),
+    /* Serves both uses: hosting a detail view (createComponent) and scoping to
+       a page (actions, list actions), which it records. */
+    createPConnect: (config: any) => {
+      const pageOptions = config?.options ?? {};
+      const pageReference: string = pageOptions.pageReference ?? '';
+      const env: { index?: number; getPConnect: () => unknown } = {
+        getPConnect: () => ({
+          createComponent: (meta?: FakeViewMeta) => renderView(meta ?? config.meta),
+          getContextName: () => pageOptions.contextName ?? pageOptions.context ?? contextName,
+          getActionsApi: () => recordingApi(pageReference, 'actions'),
+          getListActions: () => recordingApi(pageReference, 'listActions'),
+        }),
+      };
+      calls.pages.push({ pageReference, options: pageOptions, env });
+      return env;
+    },
 
     getEvents: () => ({
       getCaseEvent: () => ({ ASSIGNMENT_SUBMISSION: 'ASSIGNMENT_SUBMISSION' }),

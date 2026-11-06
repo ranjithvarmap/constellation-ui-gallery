@@ -94,6 +94,56 @@ export interface CaseDataApi {
     viewName: string,
     params: Record<string, string>,
   ): Promise<DetailViewResponse>;
+
+  /**
+   * Load a case view (metadata plus case data) through the DX API.
+   *
+   * `context` is sent only when given: the gallery's callers differ on it,
+   * and leaving it out lets the platform choose, as it did before.
+   */
+  loadView(options: LoadViewOptions): Promise<RestResponse>;
+
+  /**
+   * Save the open assignment's field values without submitting it.
+   *
+   * Sends the save with the case's current etag, then stores the etag the
+   * save returns on the case context, in that order. Skipping the second
+   * step makes the next save or submit fail as stale.
+   */
+  saveAssignment(options: SaveAssignmentOptions): Promise<void>;
+}
+
+/** A DX API response as the REST client resolves it. */
+export type RestResponse = { data: any; headers: Record<string, string> };
+
+export type LoadViewOptions = {
+  /** Case handle (pzInsKey), e.g. from `caseInfo.key()`. */
+  caseKey: string | undefined;
+  /** Class of the case, e.g. from `caseInfo.className()`. */
+  className: string | undefined;
+  /** View to load, e.g. `pyCaseSummary`. */
+  viewId: string;
+  /** Store context to load it for. Omit to let the platform decide. */
+  context?: string;
+};
+
+export type SaveAssignmentOptions = {
+  /** From `caseInfo.assignmentId()`. */
+  assignmentId: string | undefined;
+  /** From `caseInfo.actionId()`. */
+  actionId: string | undefined;
+  /** The case's current etag, sent as `if-match`. */
+  etag: string | undefined;
+  /** Property name (no leading dot) to value, e.g. `{ Notes: 'draft' }`. */
+  content: Record<string, unknown>;
+};
+
+/** Records kept behind a savable data page. */
+export interface DataObjectsApi {
+  /** Create a record through the savable data page. Resolves with the DX API response. */
+  create(dataPage: string, data: Record<string, unknown>): Promise<RestResponse>;
+  /** Update a record through the savable data page; `data` carries its key. */
+  update(dataPage: string, data: Record<string, unknown>): Promise<RestResponse>;
 }
 
 export interface ViewsApi {
@@ -219,12 +269,77 @@ export interface CaseInfoApi {
   raw<TCaseInfo = Record<string, unknown>>(): TCaseInfo | undefined;
 }
 
+/**
+ * How to scope to a page. Every option but `context` is sent to the platform
+ * only when given, so a call sends exactly the options its caller names: the
+ * gallery's call sites differ in which ones they pass, and filling in the rest
+ * would change what each one sends. An option given as `undefined` counts as
+ * not given; the platform reads a missing option as `undefined` either way.
+ */
+export type PageScopeOptions = {
+  /** Metadata the scoped PConnect is created from: the component's props, or the metadata it renders. */
+  meta: unknown;
+  /** Store context. Defaults to this component's context. */
+  context?: string;
+  /** Context name, when it must be set apart from `context` (transient containers). */
+  contextName?: string;
+  /** Render target, usually `getPConnect().getTarget()`. */
+  target?: string;
+  /** The embedded list the page belongs to, e.g. `.Items`; list actions act on it. */
+  referenceList?: string;
+  /** The view the page renders in. */
+  viewName?: string;
+  /** Whether the page renders inside a form. */
+  hasForm?: boolean;
+  /** Row index within `referenceList`; a list insert reads it from the environment. */
+  index?: number;
+};
+
+/** The actions the gallery runs against a scoped page. */
+export interface PageActions {
+  /** Write a property on the scoped page, e.g. `.IsSelected` on one row. */
+  updateFieldValue(property: string, value: unknown): void;
+  /** Submit the assignment rendered in the scoped context. */
+  finishAssignment(context: string, options: { outcomeID: string; jsActionQueryParams: object }): Promise<unknown>;
+}
+
+/** Row operations on the list named by `referenceList`. */
+export interface PageListActions {
+  insert(row: object, index: number): void;
+  deleteEntry(index: number): void;
+}
+
+/** A page other than the component's own, with a PConnect of its own. */
+export interface PageScope {
+  /** Actions that write to this page rather than the component's own. */
+  readonly actions: PageActions;
+  /** Row operations on the scope's `referenceList`. */
+  readonly listActions: PageListActions;
+  /** Context the scoped PConnect resolved to. */
+  readonly contextName: string;
+  /** Render metadata (a field, a view) on this page. */
+  render(meta: unknown): ReactNode;
+}
+
+export interface PagesApi {
+  /**
+   * Scope to another page in the store: a row of an embedded list, an
+   * embedded page, a field's own page.
+   *
+   * A component can only write to and render on its own page. Reaching a row
+   * of a list needs a PConnect created for that row, which is what this does.
+   */
+  at(pageReference: string, options: PageScopeOptions): PageScope;
+}
+
 /** The full platform surface handed to a component. */
 export interface Platform {
   /** Store context path this component is bound to. */
   readonly context: string;
   readonly caseData: CaseDataApi;
   readonly caseInfo: CaseInfoApi;
+  readonly dataObjects: DataObjectsApi;
+  readonly pages: PagesApi;
   readonly text: TextApi;
   readonly views: ViewsApi;
   readonly events: EventsApi;

@@ -14,14 +14,21 @@ import type {
   TextApi,
   CaseUrlOptions,
   ContextTreeApi,
+  DataObjectsApi,
   DetailViewResponse,
   EventsApi,
   GetPConnect,
   LinksApi,
   LoadDetailViewOptions,
+  LoadViewOptions,
+  PageScope,
+  PageScopeOptions,
+  PagesApi,
   Platform,
   QueryOptions,
   RegisterPageListOptions,
+  RestResponse,
+  SaveAssignmentOptions,
   Unsubscribe,
   ViewsApi,
 } from './types';
@@ -63,6 +70,39 @@ const createCaseData = (getPConnect: GetPConnect, context: () => string): CaseDa
 
   fetchDetailView: (dataPage: string, viewName: string, params: Record<string, string>) =>
     pcore().getDataApiUtils().getDataObjectView(dataPage, viewName, params) as Promise<DetailViewResponse>,
+
+  loadView: ({ caseKey, className, viewId, context: viewContext }: LoadViewOptions) => {
+    const payload = { queryPayload: { caseClassName: className, caseID: caseKey, viewID: viewId } };
+    /* The context argument is passed only when given, never as undefined. */
+    const args: unknown[] = viewContext === undefined ? ['loadView', payload] : ['loadView', payload, viewContext];
+    return pcore()
+      .getRestClient()
+      .invokeRestApi(...args) as Promise<RestResponse>;
+  },
+
+  saveAssignment: ({ assignmentId, actionId, etag, content }: SaveAssignmentOptions) =>
+    pcore()
+      .getRestClient()
+      .invokeRestApi('save', {
+        queryPayload: { assignmentID: assignmentId, actionID: actionId },
+        body: { content },
+        headers: { 'if-match': etag },
+      })
+      .then((response: RestResponse) => {
+        /* The save moved the case on; without its etag the next write is stale. */
+        pcore().getContainerUtils().updateCaseContextEtag(context(), response.headers.etag);
+      }),
+});
+
+const createDataObjects = (): DataObjectsApi => ({
+  create: (dataPage: string, data: Record<string, unknown>) =>
+    pcore()
+      .getRestClient()
+      .invokeRestApi('createDataObject', { body: { data }, queryPayload: { data_view_ID: dataPage } }),
+  update: (dataPage: string, data: Record<string, unknown>) =>
+    pcore()
+      .getRestClient()
+      .invokeRestApi('updateDataObject', { queryPayload: { data_view_ID: dataPage }, body: { data } }),
 });
 
 const createViews = (getPConnect: GetPConnect, caseData: CaseDataApi): ViewsApi => ({
@@ -159,6 +199,37 @@ const createCaseInfo = (getPConnect: GetPConnect): CaseInfoApi => {
   };
 };
 
+/**
+ * Wraps createPConnect. `context` defaults to the component's own; the other
+ * options are copied only when the caller gave them, so the platform receives
+ * the same options object the call site built before the facade existed.
+ */
+const createPages = (context: () => string): PagesApi => ({
+  at: (pageReference: string, { meta, index, context: pageContext, ...rest }: PageScopeOptions): PageScope => {
+    const options: Record<string, unknown> = { context: pageContext ?? context(), pageReference };
+    for (const [key, value] of Object.entries(rest)) {
+      if (value !== undefined) options[key] = value;
+    }
+
+    const c11nEnv = pcore().createPConnect({ meta, options });
+    if (index !== undefined) c11nEnv.index = index;
+    const scoped = () => c11nEnv.getPConnect();
+
+    return {
+      get actions() {
+        return scoped().getActionsApi();
+      },
+      get listActions() {
+        return scoped().getListActions();
+      },
+      get contextName() {
+        return scoped().getContextName();
+      },
+      render: (renderMeta: unknown) => scoped().createComponent(renderMeta),
+    };
+  },
+});
+
 /* The bundle and path the platform uses for its own generic UI strings. */
 const GENERIC_BUNDLE = 'Generic';
 const GENERIC_PATH = '@BASECLASS!GENERIC!PYGENERICFIELDS';
@@ -233,6 +304,8 @@ export const createPlatform = (getPConnect: GetPConnect): Platform => {
     },
     caseData,
     caseInfo: createCaseInfo(getPConnect),
+    dataObjects: createDataObjects(),
+    pages: createPages(context),
     text: createText(),
     views: createViews(getPConnect, caseData),
     events: createEvents(),
