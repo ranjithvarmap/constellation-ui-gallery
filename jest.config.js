@@ -13,6 +13,10 @@ const packagesToTranspileStr = packagesToTranspile.map((p) => `${p}`).join('|');
 module.exports = {
   preset: 'ts-jest',
   verbose: true,
+  /* One worker per core OOM-kills workers on a cold transform cache (a fresh
+     clone, CI, or the first run after a Node upgrade): every worker type-checks
+     TypeScript at once. Half the cores runs cold without kills, and faster. */
+  maxWorkers: '50%',
   moduleNameMapper: {
     shortcuts: '<rootDir>/node_modules/shortcuts/dist/index.js',
   },
