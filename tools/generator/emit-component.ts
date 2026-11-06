@@ -6,10 +6,10 @@
  * a config.json property that is neither an accepted prop nor mentioned in the
  * source, so a generated component cannot carry a dead knob.
  */
-import type { Capability, ResolvedSpec } from './define';
+import type { Capability, ResolvedBase, ResolvedFieldSpec } from './define';
 
 /** The props Constellation supplies to every Field, regardless of the spec. */
-const STANDARD_PROPS = (spec: ResolvedSpec) => {
+const STANDARD_PROPS = (spec: ResolvedFieldSpec) => {
   const rows = [
     { name: 'label', type: 'string', comment: 'field label' },
     { name: 'value', type: valueType(spec), comment: 'value supplied by the platform' },
@@ -51,7 +51,7 @@ const STANDARD_PROPS = (spec: ResolvedSpec) => {
   return [...rows.slice(0, 3), ...extras, ...rows.slice(3)];
 };
 
-const valueType = (spec: ResolvedSpec) => {
+const valueType = (spec: ResolvedFieldSpec) => {
   switch (spec.subtype) {
     case 'Picklist':
       return 'string';
@@ -66,7 +66,7 @@ const valueType = (spec: ResolvedSpec) => {
 };
 
 /** The Cosmos control used for each subtype. */
-const control = (spec: ResolvedSpec) => {
+const control = (spec: ResolvedFieldSpec) => {
   switch (spec.subtype) {
     case 'Picklist':
       return { component: 'Select', imports: ['Select', 'Option'], extra: '' };
@@ -96,7 +96,7 @@ const CAPABILITY_NOTE: Record<Capability, string> = {
   text: 'platform.text.loadingContent()',
 };
 
-export const emitComponent = (spec: ResolvedSpec): string => {
+export const emitComponent = (spec: ResolvedFieldSpec): string => {
   const { component, imports, extra } = control(spec);
   const standard = STANDARD_PROPS(spec);
   const usesPlatform = spec.capabilities.length > 0;
@@ -340,7 +340,7 @@ export default withConfiguration(${spec.componentName});
 `;
 };
 
-export const emitStyles = (spec: ResolvedSpec): string => `import styled from 'styled-components';
+export const emitStyles = (spec: ResolvedBase): string => `import styled from 'styled-components';
 
 const Styled${spec.componentName}Wrapper = styled.div\`
   display: block;
@@ -349,7 +349,7 @@ const Styled${spec.componentName}Wrapper = styled.div\`
 export default Styled${spec.componentName}Wrapper;
 `;
 
-export const emitStories = (spec: ResolvedSpec): string => {
+export const emitStories = (spec: ResolvedFieldSpec): string => {
   /* A picklist with no options renders an empty control, which demonstrates
      nothing. Story args carry example options so the story opens in a working
      state; at runtime these come from the property's value list. */
@@ -400,7 +400,7 @@ export const Default: Story = {
 `;
 };
 
-export const emitTest = (spec: ResolvedSpec): string => {
+export const emitTest = (spec: ResolvedFieldSpec): string => {
   const extra =
     spec.subtype === 'Picklist'
       ? `
@@ -455,7 +455,7 @@ test('describes its control with the helper text', () => {
   }${extra}`;
 };
 
-export const emitDocs = (spec: ResolvedSpec): string => {
+export const emitDocs = (spec: ResolvedFieldSpec): string => {
   const rows = spec.properties.length
     ? spec.properties.map((property) => `| \`${property.name}\` | ${property.format} | ${property.label} |`).join('\n')
     : '| _none_ | | |';

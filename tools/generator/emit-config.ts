@@ -3,7 +3,7 @@
  * the existing 55 components share (all 55 carry the About block; 29 carry the
  * Conditions group) rather than leaving each author to retype them.
  */
-import type { ResolvedSpec } from './define';
+import type { ResolvedBase, ResolvedFieldSpec } from './define';
 
 const ICONS: Record<string, string | undefined> = {
   Boolean: 'images/pz-checkbox-active.svg',
@@ -75,7 +75,8 @@ const advancedGroup = () => ({
   ],
 });
 
-const aboutBlock = (spec: ResolvedSpec, builtOn: Date) => [
+/** The About block every gallery component ends its property panel with. */
+export const aboutBlock = (spec: ResolvedBase, builtOn: Date) => [
   { format: 'LABEL', label: 'About', name: 'PegaAboutLabel', variant: 'h3' },
   {
     format: 'LABEL',
@@ -85,7 +86,7 @@ const aboutBlock = (spec: ResolvedSpec, builtOn: Date) => [
   },
 ];
 
-export const emitConfig = (spec: ResolvedSpec, builtOn = new Date()): string => {
+export const emitConfig = (spec: ResolvedFieldSpec, builtOn = new Date()): string => {
   const authored = spec.properties.map((property) => ({
     name: property.name,
     label: property.label,

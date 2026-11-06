@@ -56,6 +56,8 @@ export type PlatformFakeOptions = {
    * `createDataObject`, …). Unlisted endpoints resolve with an empty response.
    */
   restResponses?: Record<string, { data?: unknown; headers?: Record<string, string> }>;
+  /** Make `caseData.query` reject with this error, for a component's error state. */
+  queryError?: Error;
 };
 
 /** One field per `platform.caseInfo` read, plus the two `actionId` chooses between. */
@@ -185,6 +187,9 @@ const buildGetPConnect = (
     triggerFieldChange: () => {},
   };
   const actions = { ...actionsApi, ...actionOverrides };
+  /* What setInheritedProp has recorded; getInheritedProps reads it back, as
+     the platform does, so a template marking a region read-only is visible. */
+  const inherited: Record<string, unknown> = {};
   /* Defaults cover the PConnect surface the gallery actually uses, so most
      components need no overrides at all. */
   const pConnect = {
@@ -203,7 +208,7 @@ const buildGetPConnect = (
     getRawMetadata: () => ({ config: {} }),
     getPageReference: () => 'caseInfo.content',
     getTarget: () => contextName,
-    getInheritedProps: () => ({}),
+    getInheritedProps: () => ({ ...inherited }),
     getChildren: () => [],
     getDataObject: () => ({}),
     getCaseInfo: () => ({
@@ -223,6 +228,9 @@ const buildGetPConnect = (
     ignoreSuggestion: () => {},
     acceptSuggestion: () => {},
     setInheritedProps: () => {},
+    setInheritedProp: (name: string, value: unknown) => {
+      inherited[name] = value;
+    },
     resolveConfigProps: () => {},
     ...overrides,
   };
@@ -255,6 +263,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     actions = {},
     caseInfo,
     restResponses = {},
+    queryError,
   } = options;
 
   const calls: PlatformFake['calls'] = {
@@ -296,7 +305,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
   const dataApiUtils = {
     getData: (dataView: string, opts: unknown) => {
       calls.queries.push({ dataView, options: opts });
-      return Promise.resolve({ data: { data: rows } });
+      return queryError ? Promise.reject(queryError) : Promise.resolve({ data: { data: rows } });
     },
     getCaseEditLock: () => Promise.resolve({ headers: { etag } }),
     updateCaseEditFieldsData: (caseKey: string, payload: any) => {

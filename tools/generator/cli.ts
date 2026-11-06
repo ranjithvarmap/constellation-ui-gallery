@@ -3,7 +3,8 @@
  *
  *   npx ts-node tools/generator/cli.ts path/to/my-field.spec.ts [--force]
  *
- * The spec module must default-export the result of defineField().
+ * The spec module must default-export the result of defineField(),
+ * defineTemplate() or defineWidget().
  */
 import path from 'path';
 import { writeComponent } from './generate';
@@ -24,7 +25,7 @@ const main = async () => {
   const module_ = require(resolved);
   const spec: ResolvedSpec = module_.default ?? module_.spec;
   if (!spec?.componentKey) {
-    console.error(`${specPath} must default-export the result of defineField()`);
+    console.error(`${specPath} must default-export the result of defineField(), defineTemplate() or defineWidget()`);
     process.exit(2);
   }
 
