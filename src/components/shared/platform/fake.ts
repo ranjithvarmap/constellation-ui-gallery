@@ -46,6 +46,57 @@ export type PlatformFakeOptions = {
    * hooks up something visible, such as alerting on `createWork`.
    */
   actions?: Record<string, unknown>;
+  /**
+   * The case the component is rendered in, as `platform.caseInfo` reads it.
+   * Omit for a page with no case.
+   */
+  caseInfo?: FakeCaseInfo;
+};
+
+/** One field per `platform.caseInfo` read, plus the two `actionId` chooses between. */
+export type FakeCaseInfo = {
+  key?: string;
+  className?: string;
+  caseTypeId?: string;
+  assignmentId?: string;
+  activeActionId?: string;
+  assignmentActionId?: string;
+  availableActions?: unknown[];
+  actionButtons?: unknown;
+  raw?: unknown;
+};
+
+/**
+ * The fake's CASE_INFO path constants. The real values belong to the platform;
+ * these only need to be distinct, so that a facade member reading the wrong
+ * constant reads the wrong value and a test sees it.
+ */
+const CASE_INFO = {
+  CASE_INFO: 'caseInfo',
+  CASE_INFO_ID: 'caseInfo.ID',
+  CASE_INFO_CLASSID: 'caseInfo.classID',
+  CASE_TYPE_ID: 'caseInfo.caseTypeID',
+  ASSIGNMENT_ID: 'caseInfo.assignmentID',
+  ACTIVE_ACTION_ID: 'caseInfo.activeActionID',
+  ASSIGNMENTACTION_ID: 'caseInfo.assignmentActionID',
+  AVAILABLEACTIONS: 'caseInfo.availableActions',
+  ACTION_BUTTONS: 'caseInfo.actionButtons',
+};
+
+/** Store contents keyed by path, as `getValue` resolves them. */
+const caseInfoValues = (caseInfo: FakeCaseInfo = {}): Record<string, unknown> => {
+  const byPath: [string, unknown][] = [
+    [CASE_INFO.CASE_INFO_ID, caseInfo.key],
+    [CASE_INFO.CASE_INFO_CLASSID, caseInfo.className],
+    [CASE_INFO.CASE_TYPE_ID, caseInfo.caseTypeId],
+    [CASE_INFO.ASSIGNMENT_ID, caseInfo.assignmentId],
+    [CASE_INFO.ACTIVE_ACTION_ID, caseInfo.activeActionId],
+    [CASE_INFO.ASSIGNMENTACTION_ID, caseInfo.assignmentActionId],
+    [CASE_INFO.AVAILABLEACTIONS, caseInfo.availableActions],
+    [CASE_INFO.ACTION_BUTTONS, caseInfo.actionButtons],
+    [CASE_INFO.CASE_INFO, caseInfo.raw],
+  ];
+  return Object.fromEntries(byPath.filter(([, value]) => value !== undefined));
 };
 
 export type PlatformFake = {
@@ -81,6 +132,7 @@ const buildGetPConnect = (
   overrides: Record<string, unknown>,
   contextName: string,
   actionOverrides: Record<string, unknown> = {},
+  values: Record<string, unknown> = {},
 ): GetPConnect => {
   const containerManager = {
     addTransientItem: () => 'transient-1',
@@ -119,7 +171,9 @@ const buildGetPConnect = (
     getContainerManager: () => containerManager,
     getActionsApi: () => actions,
     getActions: () => actions,
-    getValue: () => '',
+    /* Answers by path, so a read of the wrong path gets the wrong value. Paths
+       nothing was supplied for read as '', as they always have. */
+    getValue: (path: string) => (path in values ? values[path] : ''),
     getStateProps: () => ({ value: '.value' }),
     getConfigProps: () => ({}),
     getRawMetadata: () => ({ config: {} }),
@@ -175,6 +229,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     contextName = 'app/primary_1',
     pConnect = {},
     actions = {},
+    caseInfo,
   } = options;
 
   const calls: PlatformFake['calls'] = {
@@ -228,11 +283,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     }),
 
     getConstants: () => ({
-      CASE_INFO: {
-        CASE_INFO_ID: 'caseInfo.ID',
-        CASE_INFO_CLASSID: 'caseInfo.classID',
-        AVAILABLEACTIONS: 'caseInfo.availableActions',
-      },
+      CASE_INFO,
       PUB_SUB_EVENTS: {
         CASE_EVENTS: { CREATE_STAGE_SAVED: 'CREATE_STAGE_SAVED' },
         EVENT_DASHBOARD_FILTER_CHANGE: 'DASHBOARD_FILTER_CHANGE',
@@ -277,7 +328,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
   (window as any).PCore = fake;
 
   return {
-    getPConnect: buildGetPConnect(calls, pConnect, contextName, actions),
+    getPConnect: buildGetPConnect(calls, pConnect, contextName, actions, caseInfoValues(caseInfo)),
     calls,
     allUnsubscribed: () => calls.subscriptions.every(s => !s.active),
     restore: () => {

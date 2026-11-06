@@ -8,6 +8,7 @@
 import type {
   CaseActionsApi,
   CaseDataApi,
+  CaseInfoApi,
   PlatformEvent,
   SubscribeOptions,
   TextApi,
@@ -136,6 +137,28 @@ const createEvents = (): EventsApi => ({
   },
 });
 
+/**
+ * Reads go through `getValue` with the platform's CASE_INFO path constants:
+ * exactly what the gallery's components did by hand, so moving a component
+ * onto this member changes no behaviour. PConnect also offers native
+ * accessors (`getCaseInfo().getKey()` and friends); switching to those is a
+ * change to make here, once, after confirming on a server that they agree.
+ */
+const createCaseInfo = (getPConnect: GetPConnect): CaseInfoApi => {
+  const read = (field: string) => getPConnect().getValue(pcore().getConstants().CASE_INFO[field]);
+
+  return {
+    key: () => read('CASE_INFO_ID'),
+    className: () => read('CASE_INFO_CLASSID'),
+    caseTypeId: () => read('CASE_TYPE_ID'),
+    assignmentId: () => read('ASSIGNMENT_ID'),
+    actionId: () => read('ACTIVE_ACTION_ID') || read('ASSIGNMENTACTION_ID'),
+    availableActions: () => read('AVAILABLEACTIONS') || [],
+    actionButtons: () => read('ACTION_BUTTONS'),
+    raw: () => read('CASE_INFO'),
+  };
+};
+
 /* The bundle and path the platform uses for its own generic UI strings. */
 const GENERIC_BUNDLE = 'Generic';
 const GENERIC_PATH = '@BASECLASS!GENERIC!PYGENERICFIELDS';
@@ -209,6 +232,7 @@ export const createPlatform = (getPConnect: GetPConnect): Platform => {
       return context();
     },
     caseData,
+    caseInfo: createCaseInfo(getPConnect),
     text: createText(),
     views: createViews(getPConnect, caseData),
     events: createEvents(),

@@ -161,6 +161,68 @@ describe('platform facade', () => {
     });
   });
 
+  describe('caseInfo', () => {
+    /* Every value distinct, so a member reading another member's constant
+       returns the wrong value instead of passing by coincidence. */
+    const claim = {
+      key: 'ORG-APP-WORK C-7',
+      className: 'ORG-App-Work-Claim',
+      caseTypeId: 'ORG-App-Work-Claim-Type',
+      assignmentId: 'ASSIGN-WORKLIST ORG-APP-WORK C-7!REVIEW',
+      activeActionId: 'Approve',
+      assignmentActionId: 'Review',
+      availableActions: [{ ID: 'pyEditDetails', name: 'Edit details' }],
+      actionButtons: { main: [{ actionID: 'next' }], secondary: [] },
+      raw: { ID: 'ORG-APP-WORK C-7', status: 'Open' },
+    };
+
+    const caseInfoFor = (options: Parameters<typeof installPlatformFake>[0]) => {
+      fake.restore();
+      fake = installPlatformFake(options);
+      return createPlatform(fake.getPConnect).caseInfo;
+    };
+
+    it('reads each fact from its own CASE_INFO constant', () => {
+      const caseInfo = caseInfoFor({ caseInfo: claim });
+
+      expect(caseInfo.key()).toBe(claim.key);
+      expect(caseInfo.className()).toBe(claim.className);
+      expect(caseInfo.caseTypeId()).toBe(claim.caseTypeId);
+      expect(caseInfo.assignmentId()).toBe(claim.assignmentId);
+      expect(caseInfo.availableActions()).toEqual(claim.availableActions);
+      expect(caseInfo.actionButtons()).toEqual(claim.actionButtons);
+      expect(caseInfo.raw()).toEqual(claim.raw);
+    });
+
+    it('prefers the active action, falling back to the assignment action', () => {
+      expect(caseInfoFor({ caseInfo: claim }).actionId()).toBe('Approve');
+      expect(caseInfoFor({ caseInfo: { ...claim, activeActionId: undefined } }).actionId()).toBe('Review');
+    });
+
+    it('reads at call time, so a save that moves the case on is seen', () => {
+      const store: Record<string, unknown> = { 'caseInfo.assignmentID': 'ASSIGN-1' };
+      const caseInfo = caseInfoFor({ pConnect: { getValue: (path: string) => store[path] } });
+
+      expect(caseInfo.assignmentId()).toBe('ASSIGN-1');
+      store['caseInfo.assignmentID'] = 'ASSIGN-2';
+      expect(caseInfo.assignmentId()).toBe('ASSIGN-2');
+    });
+
+    it('does not throw on a page with no case, and still lists actions as an array', () => {
+      const caseInfo = caseInfoFor({ pConnect: { getValue: () => undefined } });
+
+      expect(caseInfo.key()).toBeUndefined();
+      expect(caseInfo.actionId()).toBeUndefined();
+      expect(caseInfo.availableActions()).toEqual([]);
+    });
+
+    it('passes an empty value through unchanged rather than normalising it', () => {
+      /* Callers send these straight into data page parameters; turning '' into
+         undefined would drop the parameter from the request. */
+      expect(caseInfoFor({}).key()).toBe('');
+    });
+  });
+
   describe('text', () => {
     it('names the loading string that 13 components spell out by hand', () => {
       const platform = createPlatform(fake.getPConnect);

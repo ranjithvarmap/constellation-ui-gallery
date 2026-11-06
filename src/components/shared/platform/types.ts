@@ -180,11 +180,51 @@ export interface TextApi {
   loadingContent(): string;
 }
 
+/** One entry of a case's available actions, as the platform lists them. */
+export type CaseAction = { ID: string; name?: string; type?: string };
+
+/**
+ * Facts about the case the component is rendered in.
+ *
+ * Each read goes to the store when called, never cached, because the values
+ * change under a mounted component: a save moves the assignment on, and a
+ * refresh swaps the case data. Read inside the handler or effect that needs
+ * the value, not once at render.
+ *
+ * On a page with no case behind it, reads return whatever the store holds
+ * for the path (typically `undefined`), and nothing throws. Values are passed
+ * through unchanged, so `''` stays `''` and `undefined` stays `undefined`;
+ * callers that send them to a data page get the same payload as before.
+ */
+export interface CaseInfoApi {
+  /** Case handle (pzInsKey), e.g. `ORG-APP-WORK T-1`. The `caseKey` the other APIs take. */
+  key(): string | undefined;
+  /** Class of the case, e.g. `ORG-App-Work-Claim`. */
+  className(): string | undefined;
+  /** Id of the case type. */
+  caseTypeId(): string | undefined;
+  /** Id of the assignment being worked on, when there is one. */
+  assignmentId(): string | undefined;
+  /**
+   * The flow action being rendered: the active action, or, when none is
+   * active, the assignment's own action. Saving an assignment needs this id,
+   * and the fallback is easy to forget.
+   */
+  actionId(): string | undefined;
+  /** Actions the current operator may run on the case. Always an array. */
+  availableActions<TAction = CaseAction>(): TAction[];
+  /** The main and secondary buttons of the current assignment. */
+  actionButtons<TButtons = unknown>(): TButtons | undefined;
+  /** The whole `caseInfo` object, for the rare field not named above. */
+  raw<TCaseInfo = Record<string, unknown>>(): TCaseInfo | undefined;
+}
+
 /** The full platform surface handed to a component. */
 export interface Platform {
   /** Store context path this component is bound to. */
   readonly context: string;
   readonly caseData: CaseDataApi;
+  readonly caseInfo: CaseInfoApi;
   readonly text: TextApi;
   readonly views: ViewsApi;
   readonly events: EventsApi;
