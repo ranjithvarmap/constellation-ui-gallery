@@ -76,6 +76,14 @@ export type PlatformFakeOptions = {
    * the last is the newest, as the platform lists them.
    */
   containerItems?: Record<string, unknown>;
+  /** What `getAttachmentUtils().uploadAttachment` resolves with. Defaults to `{ ID: 'attachment-1' }`. */
+  uploadResult?: unknown;
+  /** What `getFormUtils().isFormValid` answers. Defaults to true. */
+  formValid?: boolean;
+  /** What `getAttachmentUtils().getCaseAttachments` resolves with. */
+  caseAttachments?: unknown[];
+  /** How `getAttachmentUtils().downloadAttachment` answers. Defaults to empty content. */
+  downloadAttachment?: (id: string) => Promise<unknown>;
 };
 
 /** One field per `platform.caseInfo` read, plus the two `actionId` chooses between. */
@@ -202,6 +210,14 @@ export type PlatformFake = {
     stateUpdates: unknown[];
     /** Events published through `getPubSubUtils().publish`. */
     published: { event: string; payload: unknown }[];
+    /** Files uploaded through `getAttachmentUtils().uploadAttachment`. */
+    uploads: { name: string; context: string }[];
+    /** Uploaded files linked to a case through `linkAttachmentsToCase`. */
+    attachmentLinks: { caseKey: string; files: unknown[]; type: string; context: string }[];
+    /** Case attachment lists read through `getCaseAttachments`. */
+    attachmentReads: { caseKey: string; context: string }[];
+    /** Attachments downloaded, by id. */
+    downloads: string[];
   };
   /** True when every subscription taken out has been detached again. */
   allUnsubscribed(): boolean;
@@ -331,6 +347,10 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     store = {},
     values = {},
     containerItems = {},
+    uploadResult = { ID: 'attachment-1' },
+    formValid = true,
+    caseAttachments = [],
+    downloadAttachment = () => Promise.resolve({ data: '' }),
   } = options;
 
   const calls: PlatformFake['calls'] = {
@@ -355,6 +375,10 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     containerChanges: [],
     stateUpdates: [],
     published: [],
+    uploads: [],
+    attachmentLinks: [],
+    attachmentReads: [],
+    downloads: [],
   };
 
   const previous = (window as any).PCore;
@@ -407,6 +431,27 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
           .forEach((subscription) => {
             subscription.active = false;
           });
+      },
+    }),
+
+    getFormUtils: () => ({ isFormValid: () => formValid }),
+
+    getAttachmentUtils: () => ({
+      getCaseAttachments: (caseKey: string, context: string) => {
+        calls.attachmentReads.push({ caseKey, context });
+        return Promise.resolve(caseAttachments);
+      },
+      downloadAttachment: (id: string) => {
+        calls.downloads.push(id);
+        return downloadAttachment(id);
+      },
+      uploadAttachment: (file: { name: string }, _onProgress: unknown, _onError: unknown, context: string) => {
+        calls.uploads.push({ name: file.name, context });
+        return Promise.resolve(uploadResult);
+      },
+      linkAttachmentsToCase: (caseKey: string, files: unknown[], type: string, context: string) => {
+        calls.attachmentLinks.push({ caseKey, files, type, context });
+        return Promise.resolve();
       },
     }),
 
