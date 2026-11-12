@@ -144,3 +144,6 @@ dist
 src/component-list.js
 src/component-list.json
 src/index.js
+
+# Story pictures taken by npm run snapshot
+.snapshots

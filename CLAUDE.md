@@ -17,6 +17,8 @@ the `pega-dx-contract` skill. The summary below is the rules, not the detail.
 - `tools/generator/` — spec-driven generator for all three types (`defineField`,
   `defineTemplate`, `defineWidget`).
 - `tools/config-parity/` — checks every `config.json` property is read by the component.
+- `tools/snapshot/` — `npm run snapshot -- <Name>` photographs a component's stories
+  (Playwright Chromium) to `.snapshots/`, to compare with a mockup.
 - `.storybook/` — Storybook 10 with Cosmos themes; it is the local dev environment.
 
 There are three component types: **Field** (binds one property), **Template**
@@ -26,7 +28,9 @@ case). Check `type` in `config.json` before changing a component.
 ## Rules
 
 1. **New components start from the generator**, whatever the type:
-   `npm run generate -- tools/generator/specs/<name>.<field|template|widget>.ts`.
+   `npm run generate -- tools/generator/specs/<name>.<field|template|widget>.ts`
+   (`--plan` first to review it). From a screenshot or mockup, use the
+   `component-from-image` skill, which writes the spec from the image.
    The `new-dx-component` skill has the whole workflow. Never hand-write
    `config.json` and the props type separately — that is how they drift.
 2. **No `PCore` outside `shared/platform`.** Go through `createPlatform(getPConnect)`.

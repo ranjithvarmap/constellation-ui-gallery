@@ -76,10 +76,14 @@ parameter on a page-only widget all fail with a message saying what to change.
 ## 3. Generate
 
 ```bash
+npm run generate -- tools/generator/specs/<file>.ts --plan   # what it will make; writes nothing
 npm run generate -- tools/generator/specs/<file>.ts
 ```
 
-It refuses to overwrite an existing component; `--force` overwrites.
+`--plan` describes the component, its App Studio settings, the files and every
+`TODO` left for you; show it to the person before generating when the spec
+involved guesses. Generating refuses to overwrite an existing component;
+`--force` overwrites.
 
 ## 4. Implement
 
@@ -118,3 +122,10 @@ prompting or contacting a server, then put back the archive it rewrites under
 `npm start` serves Storybook on port 6006. The component is under `Fields/`,
 `Templates/` or `Widgets/` by its label. A widget with a list has `Default`,
 `Empty` and `LoadFailed` stories.
+
+`npm run snapshot -- <Name>` photographs every story to
+`.snapshots/Pega_Extensions_<Name>/` (starting Storybook if needed) and prints
+errors a story throws. Read the pictures to check the result looks right.
+
+Starting from a screenshot or mockup instead of a description? Use the
+`component-from-image` skill; it writes the spec from the image and ends here.

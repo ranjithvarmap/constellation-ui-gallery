@@ -60,7 +60,8 @@
     "validate": "custom-dx-components buildComponent",
     "validate-schema": "custom-dx-components validateSchema",
     "validateAll": "custom-dx-components buildAllComponents",
-    "generate": "ts-node -P tools/generator/tsconfig.json tools/generator/cli.ts"
+    "generate": "ts-node -P tools/generator/tsconfig.json tools/generator/cli.ts",
+    "snapshot": "ts-node -P tools/snapshot/tsconfig.json tools/snapshot/cli.ts"
   },
   "dependencies": {
     "@arcgis/core": "^5.1.0",
