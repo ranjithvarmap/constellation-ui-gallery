@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { StrictMode, type ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { composeStories } from '@storybook/react';
 import { Configuration } from '@pega/cosmos-react-core';
@@ -60,7 +60,11 @@ test('deletes the row whose button was pressed', async () => {
   expect(calls.pageCalls).toEqual([
     { pageReference: 'caseInfo.content', api: 'listActions', method: 'deleteEntry', args: [1] },
   ]);
-  expect(screen.queryByDisplayValue('Lenovo')).not.toBeInTheDocument();
+  /* The table drops a row. Which values the cells then show is the platform's
+     store's business after deleteEntry, which the fake does not simulate; an
+     earlier version of this test passed only because the component spliced
+     the platform's value arrays in place. */
+  expect(screen.getAllByRole('button', { name: 'Delete this record' })).toHaveLength(2);
 });
 
 test('registers the list with the context tree', async () => {
@@ -68,4 +72,28 @@ test('registers the list with the context tree', async () => {
 
   /* (contextName, pageName, viewName, pageListName) */
   expect(calls.registeredPageLists).toEqual([['app/primary_1', 'caseInfo.content', 'demoView', 'Computers']]);
+});
+
+/* React runs state updater functions twice in development StrictMode, to
+   flush out side effects. A row change made inside one would happen twice. */
+test('adds and deletes exactly one row under StrictMode', async () => {
+  platform = installEditableTablePlatform();
+  render(
+    <StrictMode>
+      <Configuration>
+        <PegaExtensionsEditableTableLayout getPConnect={platform.getPConnect} />
+      </Configuration>
+    </StrictMode>,
+  );
+  await screen.findAllByRole('button', { name: 'Delete this record' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add new record' }));
+  fireEvent.click(screen.getAllByRole('button', { name: 'Delete this record' })[0]);
+
+  expect(platform.calls.pageCalls.map(({ method, args }) => [method, ...args])).toEqual([
+    ['insert', {}, 3],
+    ['deleteEntry', 0],
+  ]);
+  /* Three rows, one added, one deleted: the table shows three. */
+  expect(screen.getAllByRole('button', { name: 'Delete this record' })).toHaveLength(3);
 });
