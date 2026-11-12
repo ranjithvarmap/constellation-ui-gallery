@@ -83,12 +83,21 @@ Every Field has to handle all of these:
 **Do not wrap a self-labelling control in an outer `FormField`.** The outer
 `FormField` makes its own id, which the control never carries, so the label
 points at nothing and screen readers announce an unlabelled field. Every
-generated Field had this bug until the generator was fixed, and 8 hand-written
-components still do (Toggle, StarRatingInput, SignatureCapture, Scheduler,
-QRCode, BarCode, DisplayPDF, and one TrendDisplay story). Use `FormField` only
-around something that can't label itself, such as a `Switch`, a canvas or a
-custom widget. Then give `FormField` and the inner element the **same `id`**.
-Check it with `screen.getByLabelText(label)`; the generator emits that test.
+generated Field had this bug until the generator was fixed. Use `FormField`
+only around something that can't label itself, and then:
+
+- **A control that takes an id** (`Switch`, a native `input`): give `FormField`
+  and the control the **same `id`** (`useUID()`). See `Toggle`.
+- **Anything else** (a canvas, an image, an iframe, a chart, a `role="slider"`
+  or `role="meter"` div): a `<label for>` cannot name it. Pass
+  `labelAs='span'` so the label is only text, and let the content name itself
+  with `alt`, `title` or `aria-label`. See `SignatureCapture`, `Meter`.
+
+Check it with `brokenLabelLinks(container)` from `shared/label-links`, which
+should return `[]`, and with `screen.getByLabelText(label)` for a real
+control; the generator emits the latter. Cosmos's own `Slider` with
+`showInput={false}` still points its label at a div (seen in RatingLayout);
+that is upstream, not ours to patch.
 
 When `hasSuggestions` is true, set the status to `'pending'`.
 

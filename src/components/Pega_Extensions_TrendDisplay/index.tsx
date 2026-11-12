@@ -205,7 +205,7 @@ export const PegaExtensionsTrendDisplay = (props: TrendDisplayProps) => {
     return displayComp;
   }
   return (
-    <FormField id={id} label={label} labelHidden={hideLabel} additionalInfo={additionalInfo}>
+    <FormField id={id} label={label} labelAs='span' labelHidden={hideLabel} additionalInfo={additionalInfo}>
       {displayComp}
     </FormField>
   );

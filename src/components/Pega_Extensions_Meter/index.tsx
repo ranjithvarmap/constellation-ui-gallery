@@ -183,6 +183,7 @@ export const PegaExtensionsMeter = (props: MeterProps) => {
       id={id}
       as={StyledFieldGroupElementMeter}
       label={label}
+      labelAs='span'
       labelHidden={hideLabel}
       {...(additionalInfo ? { additionalInfo: { heading: label, content: additionalInfo } } : undefined)}
     >

@@ -148,7 +148,7 @@ export const PegaExtensionsScheduler = (props: PegaExtensionsSchedulerProps) => 
     <>
       <GlobalStyle />
       <Flex container={{ direction: 'column' }}>
-        <FormField label={label} labelHidden={hideLabel} testId={testId}>
+        <FormField label={label} labelAs='span' labelHidden={hideLabel} testId={testId}>
           <FormControl ariaLabel={label}>
             <MainCard theme={theme}>
               {isValidEventDate ? (

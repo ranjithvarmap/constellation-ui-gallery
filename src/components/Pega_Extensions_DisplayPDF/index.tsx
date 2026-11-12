@@ -149,7 +149,7 @@ export const PegaExtensionsDisplayPDF = (props: DisplayPDFProps) => {
     const blob = new Blob([buf], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     return (
-      <FormField label={label} labelHidden={hideLabel}>
+      <FormField label={label} labelAs='span' labelHidden={hideLabel}>
         <FormControl ariaLabel={label}>
           <iframe
             name={label}

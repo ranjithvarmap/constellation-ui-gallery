@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, type ChangeEvent } from 'react';
-import { withConfiguration, Switch, Text, FormField } from '@pega/cosmos-react-core';
+import { withConfiguration, Switch, Text, FormField, useUID } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
 
 export type ToggleProps = {
@@ -64,6 +64,8 @@ export const PegaExtensionsToggle = (props: ToggleProps) => {
   );
 
   const [inputValue, setInputValue] = useState(!!value);
+  /* FormField's label names the switch through this id. */
+  const id = useUID();
   const [status, setStatus] = useState(hasSuggestions ? 'pending' : undefined);
 
   useEffect(() => setInputValue(!!value), [value]);
@@ -110,6 +112,7 @@ export const PegaExtensionsToggle = (props: ToggleProps) => {
   return (
     <FormField
       {...additionalProps}
+      id={id}
       label={label}
       labelHidden={hideLabel}
       info={validatemessage || helperText}
@@ -118,7 +121,7 @@ export const PegaExtensionsToggle = (props: ToggleProps) => {
       required={required}
       disabled={disabled}
     >
-      <Switch label={caption} on={inputValue} disabled={disabled} onChange={handleChange} onBlur={handleBlur} />
+      <Switch id={id} label={caption} on={inputValue} disabled={disabled} onChange={handleChange} onBlur={handleBlur} />
     </FormField>
   );
 };
