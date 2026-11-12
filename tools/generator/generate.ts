@@ -10,8 +10,7 @@ import path from 'path';
 import type { ResolvedSpec } from './define';
 import { renderComponent, type GeneratedFile } from './render';
 
-const parserFor = (name: string) =>
-  name.endsWith('.json') ? 'json' : name.endsWith('.mdx') ? 'mdx' : 'typescript';
+const parserFor = (name: string) => (name.endsWith('.json') ? 'json' : name.endsWith('.mdx') ? 'mdx' : 'typescript');
 
 export const formatFiles = async (files: GeneratedFile[], cwd: string): Promise<GeneratedFile[]> => {
   const prettier = await import('prettier');

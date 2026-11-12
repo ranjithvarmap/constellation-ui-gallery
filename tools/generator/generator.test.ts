@@ -36,9 +36,7 @@ describe('spec validation', () => {
   });
 
   it('rejects a name that is not PascalCase', () => {
-    expect(() =>
-      defineField({ name: 'bad name', label: 'x', description: '', subtype: 'Text' }),
-    ).toThrow(/PascalCase/);
+    expect(() => defineField({ name: 'bad name', label: 'x', description: '', subtype: 'Text' })).toThrow(/PascalCase/);
   });
 
   it('gives a Boolean field no placeholder by default', () => {

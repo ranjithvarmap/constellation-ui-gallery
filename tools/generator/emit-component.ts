@@ -106,9 +106,7 @@ export const emitComponent = (spec: ResolvedFieldSpec): string => {
   const isNumeric = spec.subtype === 'Integer' || spec.subtype === 'Decimal';
 
   const propsType = [
-    ...standard.map(
-      (row) => `  /** ${row.comment} */\n  ${row.name}${row.optional ? '?' : ''}: ${row.type};`,
-    ),
+    ...standard.map((row) => `  /** ${row.comment} */\n  ${row.name}${row.optional ? '?' : ''}: ${row.type};`),
     ...spec.properties.map(
       (property) =>
         `  /** ${property.label} */\n  ${property.name}${property.required ? '' : '?'}: ${property.tsType};`,
@@ -155,9 +153,7 @@ ${spec.properties
     ? spec.properties.map((property) => `   * - ${property.name}: ${property.label}`).join('\n')
     : '   * (none)';
 
-  const platformImport = usesPlatform
-    ? `import { createPlatform } from '../shared/platform';\n`
-    : '';
+  const platformImport = usesPlatform ? `import { createPlatform } from '../shared/platform';\n` : '';
   const platformSetup = usesPlatform
     ? `\n  /* Platform capabilities declared in the spec:\n${spec.capabilities
         .map((capability) => `     - ${CAPABILITY_NOTE[capability]}`)
@@ -170,10 +166,10 @@ ${spec.properties
   const changeHandler = isPicklist
     ? `  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {\n    actions.updateFieldValue(propName, event.target.value);\n  };`
     : isBoolean
-    ? `  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {\n    actions.updateFieldValue(propName, event.target.checked);\n  };`
-    : `  const handleChange = (event: ChangeEvent<${
-        spec.subtype === 'Text-Paragraph' ? 'HTMLTextAreaElement' : 'HTMLInputElement'
-      }>) => {\n    actions.updateFieldValue(propName, event.target.value);\n  };`;
+      ? `  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {\n    actions.updateFieldValue(propName, event.target.checked);\n  };`
+      : `  const handleChange = (event: ChangeEvent<${
+          spec.subtype === 'Text-Paragraph' ? 'HTMLTextAreaElement' : 'HTMLInputElement'
+        }>) => {\n    actions.updateFieldValue(propName, event.target.value);\n  };`;
 
   /* The control labels itself. Cosmos Input, TextArea and Select each render
      their own FormField from these props, under the control's own id, so the
@@ -203,10 +199,10 @@ ${labelling}
           testId={testId}
         >
 ${
-    spec.inputSettings.includes('placeholder')
-      ? `          {placeholder ? <Option value=''>{placeholder}</Option> : null}\n`
-      : ''
-  }          {items.map((item) => (
+  spec.inputSettings.includes('placeholder')
+    ? `          {placeholder ? <Option value=''>{placeholder}</Option> : null}\n`
+    : ''
+}          {items.map((item) => (
             <Option key={String(item.key)} value={String(item.key)}>
               {labelFor(item)}
             </Option>
@@ -216,7 +212,7 @@ ${
   const controlMarkup = isPicklist
     ? picklistMarkup
     : isBoolean
-    ? `        <${component}
+      ? `        <${component}
 ${labelling}
           checked={value}
           disabled={disabled}
@@ -226,7 +222,7 @@ ${labelling}
           onBlur={handleBlur}
           testId={testId}
         />`
-    : `        <${component}
+      : `        <${component}
 ${labelling}
           ${extra}
           value={${isNumeric ? "value === undefined ? '' : String(value)" : "value ?? ''"}}${spec.inputSettings.includes('placeholder') ? '\n          placeholder={placeholder}' : ''}
@@ -284,8 +280,8 @@ export const ${spec.componentName} = (props: ${spec.componentName}Props) => {
   const actions = pConn.getActionsApi();
   const propName: string = pConn.getStateProps().value;
 ${authoredTodo}${
-  isPicklist
-    ? `
+    isPicklist
+      ? `
   /* Options come from the property: a local list arrives on \`datasource\`, a
      data page on \`listOutput\`. Nothing about the list is hardcoded here. */
   const isDataPage = listType === 'datapage';
@@ -298,14 +294,10 @@ ${authoredTodo}${
     items.find((item) => String(item.key) === String(value ?? ''))?.[isDataPage ? 'text' : 'value'] ??
     String(value ?? '');
 `
-    : ''
-}${platformSetup}
+      : ''
+  }${platformSetup}
   const [status, setStatus] = useState<'error' | undefined>(undefined);
-${
-  usesPlatform
-    ? ''
-    : ''
-}
+${usesPlatform ? '' : ''}
 ${changeHandler}
 
   const handleBlur = () => {
@@ -444,15 +436,15 @@ test.each([false, true])('names its control by the label when hideLabel is %s', 
   expect(screen.getByLabelText('${spec.label}')).toBeInTheDocument();
 });
 ${
-    spec.inputSettings.includes('helperText')
-      ? `
+  spec.inputSettings.includes('helperText')
+    ? `
 test('describes its control with the helper text', () => {
   render(<Default helperText='Shown beneath the field' />);
   expect(screen.getByLabelText('${spec.label}')).toHaveAccessibleDescription('Shown beneath the field');
 });
 `
-      : ''
-  }${extra}`;
+    : ''
+}${extra}`;
 };
 
 export const emitDocs = (spec: ResolvedFieldSpec): string => {
