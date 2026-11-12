@@ -70,7 +70,11 @@ export type PlatformFakeOptions = {
    * caseInfo ones, e.g. `{ 'caseInfo.headers.etag': 'e-1', '.Notes': 'draft' }`.
    */
   values?: Record<string, unknown>;
-  /** What `getContainerUtils().getContainerItemData(target, context)` returns, by context. */
+  /**
+   * Container items by context name. `getContainerItemData(target, context)`
+   * returns one; `getContainerItems(target)` returns them all, in order, so
+   * the last is the newest, as the platform lists them.
+   */
   containerItems?: Record<string, unknown>;
 };
 
@@ -129,6 +133,17 @@ export type PageCall = {
 };
 
 /** One registration with the cascade manager. */
+/** One subscription to server-pushed messages. */
+export type MessagingSubscription = {
+  filter: unknown;
+  context: string;
+  id: string;
+  /** False once unsubscribed by its id. */
+  active: boolean;
+  /** Deliver a message to the subscriber, as the server would. */
+  notify: (message?: unknown) => void;
+};
+
 export type CascadeRegistration = {
   context: string;
   pageReference: string;
@@ -179,6 +194,12 @@ export type PlatformFake = {
      * callback, as the platform does when one of the fields changes.
      */
     cascades: CascadeRegistration[];
+    /** Messaging subscriptions; `notify()` delivers a message, as the server would. */
+    messaging: MessagingSubscription[];
+    /** Container items the component added or removed through the container manager. */
+    containerChanges: { change: 'add' | 'remove'; item: unknown }[];
+    /** State the component put into the store through `getPConnect().updateState`. */
+    stateUpdates: unknown[];
   };
   /** True when every subscription taken out has been detached again. */
   allUnsubscribed(): boolean;
@@ -198,8 +219,12 @@ const buildGetPConnect = (
   const containerManager = {
     addTransientItem: () => 'transient-1',
     updateTransientData: () => {},
-    addContainerItem: () => {},
-    removeContainerItem: () => {},
+    addContainerItem: (item: unknown) => {
+      calls?.containerChanges.push({ change: 'add', item });
+    },
+    removeContainerItem: (item: unknown) => {
+      calls?.containerChanges.push({ change: 'remove', item });
+    },
   };
   const actionsApi = {
     openWorkByHandle: (caseKey: string, className: string) => {
@@ -259,7 +284,9 @@ const buildGetPConnect = (
     }),
     getValidationApi: () => ({ validate: () => true }),
     createComponent: () => null,
-    updateState: () => {},
+    updateState: (state: unknown) => {
+      calls?.stateUpdates.push(state);
+    },
     ignoreSuggestion: () => {},
     acceptSuggestion: () => {},
     setInheritedProps: () => {},
@@ -322,6 +349,9 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     loadedComponents: [],
     dispatched: [],
     cascades: [],
+    messaging: [],
+    containerChanges: [],
+    stateUpdates: [],
   };
 
   const previous = (window as any).PCore;
@@ -361,6 +391,21 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
 
   const fake: any = {
     getDataApiUtils: () => dataApiUtils,
+
+    getMessagingServiceManager: () => ({
+      subscribe: (filter: unknown, callback: (message?: unknown) => void, context: string) => {
+        const id = `message-subscription-${calls.messaging.length + 1}`;
+        calls.messaging.push({ filter, context, id, active: true, notify: callback });
+        return id;
+      },
+      unsubscribe: (id: string) => {
+        calls.messaging
+          .filter((subscription) => subscription.id === id)
+          .forEach((subscription) => {
+            subscription.active = false;
+          });
+      },
+    }),
 
     getCascadeManager: () => ({
       registerFields: (context: string, pageReference: string, fields: string[], callback: () => void, id: unknown) => {
@@ -402,6 +447,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
 
     getContainerUtils: () => ({
       getContainerItemData: (_target: string, context: string) => containerItems[context],
+      getContainerItems: () => containerItems,
       updateCaseContextEtag: (context: string, newEtag: string) => {
         calls.etagUpdates.push({ context, etag: newEtag });
       },
