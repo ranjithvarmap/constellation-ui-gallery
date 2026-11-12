@@ -200,6 +200,8 @@ export type PlatformFake = {
     containerChanges: { change: 'add' | 'remove'; item: unknown }[];
     /** State the component put into the store through `getPConnect().updateState`. */
     stateUpdates: unknown[];
+    /** Events published through `getPubSubUtils().publish`. */
+    published: { event: string; payload: unknown }[];
   };
   /** True when every subscription taken out has been detached again. */
   allUnsubscribed(): boolean;
@@ -352,6 +354,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     messaging: [],
     containerChanges: [],
     stateUpdates: [],
+    published: [],
   };
 
   const previous = (window as any).PCore;
@@ -496,7 +499,9 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
         const found = calls.subscriptions.find((s) => s.event === event && s.id === id);
         if (found) found.active = false;
       },
-      publish: () => {},
+      publish: (event: string, payload: unknown) => {
+        calls.published.push({ event, payload });
+      },
     }),
 
     getSemanticUrlUtils: () => ({
