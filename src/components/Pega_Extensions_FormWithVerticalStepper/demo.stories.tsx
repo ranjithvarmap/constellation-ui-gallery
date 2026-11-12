@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { StoryObj } from '@storybook/react-webpack5';
 import Input from '@pega/cosmos-react-core/lib/components/Input/Input';
 import { PegaExtensionsFormWithVerticalStepper } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 import type { PegaExtensionsFormWithVerticalStepperProps } from './types';
 
 export default {
@@ -14,39 +15,6 @@ export default {
     },
   },
   component: PegaExtensionsFormWithVerticalStepper,
-};
-
-const setPCore = () => {
-  (window as any).PCore = {
-    getConstants: () => {
-      return {
-        PUB_SUB_EVENTS: {
-          CASE_EVENTS: {
-            CREATE_STAGE_SAVED: 'CaseEvents_CreateStageSaved',
-          },
-        },
-        CASE_INFO: {
-          ACTION_BUTTONS: 'actionsButtonData',
-        },
-      };
-    },
-    getLocaleUtils: () => ({
-      getLocaleValue: (val: string) => val,
-    }),
-    getFormUtils: () => ({
-      isFormValid: () => true,
-    }),
-    getPubSubUtils: () => {
-      return {
-        subscribe: () => {
-          /* nothing */
-        },
-        unsubscribe: () => {
-          /* nothing */
-        },
-      };
-    },
-  };
 };
 
 const generateChildren = (count: number) => {
@@ -117,7 +85,8 @@ const createComponent = (config: any, key: string) => {
 type Story = StoryObj<typeof PegaExtensionsFormWithVerticalStepper>;
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    /* The shared platform double for PCore; the story simulates its own PConnect below. */
+    installPlatformFake();
 
     const [steps, setSteps] = useState([
       { ID: 'step1', name: 'Step 1', visited_status: 'current' },
