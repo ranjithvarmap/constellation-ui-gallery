@@ -167,14 +167,6 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
   }, [validatemessage, status]);
 
   useEffect(() => {
-    /* In 24.2, we need to initialize the context tree manager */
-    (window as any).PCore.getContextTreeManager().addPageListNode(
-      getPConnect().getContextName(),
-      'caseInfo.content',
-      getPConnect().meta.name,
-      productRef.current,
-    );
-
     const SelectedProducts: any = getAllFields(0, getPConnect);
     const tmpFields: any = getAllFields(1, getPConnect);
     if (SelectedProducts.length !== 1 || !SelectedProducts[0]?.authorContext || tmpFields.length === 0) {
@@ -186,6 +178,15 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
     const context = getPConnect().getContextName();
     const content: any = (window as any).PCore.getStore().getState().data?.[context]?.caseInfo?.content;
     productRef.current = SelectedProducts[0].authorContext.substring(1);
+
+    /* In 24.2, we need to initialize the context tree manager. Registered only
+       once the list's name is known: before, this ran first and registered ''. */
+    (window as any).PCore.getContextTreeManager().addPageListNode(
+      getPConnect().getContextName(),
+      'caseInfo.content',
+      getPConnect().meta.name,
+      productRef.current,
+    );
     productSelectionRequiredRef.current = false;
     if (SelectedProducts[0]?.inheritedProps?.length > 0) {
       for (const val of SelectedProducts[0].inheritedProps) {

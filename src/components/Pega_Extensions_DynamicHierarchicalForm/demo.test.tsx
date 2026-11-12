@@ -68,11 +68,9 @@ test('removing a product deselects it on its own row and hides its tab', async (
   expect(screen.getByRole('tab', { name: 'Product #1' })).toBeInTheDocument();
 });
 
-/* Known defect, recorded rather than hidden: the effect registers the list
-   before it has read the list's name, so it registers ''. test.failing passes
-   while the defect exists, and fails once it is fixed, as a prompt to make
-   this an ordinary test. */
-test.failing('registers the product list with the context tree', async () => {
+/* Registered only once the list's name is read; it once ran first and
+   registered an empty name. */
+test('registers the product list with the context tree', async () => {
   const calls = await renderForm();
 
   expect(calls.registeredPageLists).toEqual([[CONTEXT, 'caseInfo.content', 'demoView', 'Products']]);
