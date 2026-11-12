@@ -24,6 +24,8 @@ export type OAuthConnectProps = {
   connectLabel: string;
   showDisconnect: boolean;
   disconnectLabel: string;
+  /** Icon shown beside the heading; config.json offers both. */
+  iconName?: 'node' | 'chain';
 };
 
 export const PegaExtensionsOAuthConnect = (props: OAuthConnectProps) => {
@@ -34,6 +36,7 @@ export const PegaExtensionsOAuthConnect = (props: OAuthConnectProps) => {
     connectLabel = 'Connect',
     showDisconnect = true,
     disconnectLabel = 'Disconnect',
+    iconName = 'node',
   } = props;
   const [loginStatus, setLoginStatus] = useState(false);
   const [expDate, setExpDate] = useState<any>();
@@ -133,7 +136,7 @@ export const PegaExtensionsOAuthConnect = (props: OAuthConnectProps) => {
     <Card>
       <StyledSummaryListHeader>
         <Flex container={{ alignItems: 'center', gap: 1 }}>
-          <Icon name='node' />
+          <Icon name={iconName} />
           <Text variant='h3'>{heading}</Text>
         </Flex>
       </StyledSummaryListHeader>

@@ -18,10 +18,6 @@
     "FormWithVerticalStepper.inheritParentLayout",
     "ImageMagnify.label",
     "ImageMagnify.testId",
-    "JapaneseInput.helperText",
-    "OAuthConnect.iconName",
-    "SignatureCapture.placeholder",
-    "StarRatingInput.placeholder",
     "StatusBadge.label"
   ]
 }
