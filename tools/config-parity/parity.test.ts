@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { checkParity, type ParityReport } from './parity';
+import { checkParity, declaredInConfig, type ParityReport } from './parity';
 
 const ROOT = path.resolve(__dirname, '../..');
 const COMPONENTS = path.join(ROOT, 'src/components');
@@ -36,5 +36,28 @@ describe('config.json / component props parity', () => {
     /* Keeps the baseline shrinking: once drift is fixed, its entry must be
        removed, so the list cannot quietly become a permanent allowlist. */
     expect(fixed).toEqual([]);
+  });
+});
+
+describe('platform-read settings', () => {
+  const group = (label: string, names: string[]) => ({
+    label,
+    format: 'GROUP',
+    properties: names.map((name) => ({ name, label: name, format: 'TEXT' })),
+  });
+
+  it("skips a table column's width settings, which the platform's table reads", () => {
+    const config = { properties: [group('Column settings', ['columnWidth', 'width'])] };
+    expect(declaredInConfig(config)).toEqual([]);
+  });
+
+  it('still checks the same names anywhere else, and other names in that group', () => {
+    const config = {
+      properties: [
+        { name: 'width', label: 'Width', format: 'TEXT' },
+        group('Column settings', ['columnWidth', 'padding']),
+      ],
+    };
+    expect(declaredInConfig(config).map((property) => property.name)).toEqual(['width', 'padding']);
   });
 });

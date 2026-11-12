@@ -41,17 +41,29 @@ const NON_PROP_FORMATS = new Set(['GROUP', 'LABEL', 'VISIBILITY', 'CONTENTPICKER
  */
 const PLATFORM_RESOLVED = new Set(['labelOption']);
 
+/**
+ * Table column settings, which the platform's table reads to size a field's
+ * column when the field is shown in an embedded list; the field never sees
+ * them. Pega's own Field scaffolding (@pega/custom-dx-components) declares
+ * both in 15 of its 18 field types, inside a "Column settings" group visible
+ * only in a table view, and none of its components reads either. Only these
+ * names, and only inside that group, are skipped.
+ */
+const COLUMN_SETTINGS_GROUP = 'Column settings';
+const COLUMN_SETTINGS = new Set(['columnWidth', 'width']);
+
 const COMPONENT_NAME = /^(Pega|Rohan)/;
 
 /** Property names declared in config.json, flattened through GROUP nesting. */
 export const declaredInConfig = (config: any): { name: string; format: string }[] => {
   const out: { name: string; format: string }[] = [];
-  const walk = (properties: any[] | undefined) => {
+  const walk = (properties: any[] | undefined, group?: string) => {
     for (const property of properties ?? []) {
-      if (Array.isArray(property.properties)) walk(property.properties);
+      if (Array.isArray(property.properties)) walk(property.properties, property.label);
       if (!property.name) continue;
       if (NON_PROP_FORMATS.has(property.format)) continue;
       if (PLATFORM_RESOLVED.has(property.name)) continue;
+      if (group === COLUMN_SETTINGS_GROUP && COLUMN_SETTINGS.has(property.name)) continue;
       out.push({ name: property.name, format: property.format ?? 'unknown' });
     }
   };

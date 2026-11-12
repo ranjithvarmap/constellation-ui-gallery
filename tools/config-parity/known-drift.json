@@ -6,7 +6,7 @@
     "fails on NEW drift.",
     "",
     "This list must only shrink. Fixing a component means either wiring the",
-    "prop up or deleting it from config.json, then removing its entry here —",
+    "prop up or deleting it from config.json, then removing its entry here \u2014",
     "the 'no stale entries' test enforces that.",
     "",
     "Worked example: OAuthConnect.iconName offers 'node' and 'chain', and the",
@@ -16,20 +16,12 @@
   "drift": [
     "CaseReference.label",
     "FormWithVerticalStepper.inheritParentLayout",
-    "ImageMagnify.columnWidth",
     "ImageMagnify.label",
     "ImageMagnify.testId",
-    "JapaneseInput.columnWidth",
     "JapaneseInput.helperText",
-    "MarkdownInput.columnWidth",
-    "MarkdownInput.width",
     "OAuthConnect.iconName",
-    "SecureRichText.columnWidth",
-    "SecureRichText.width",
     "SignatureCapture.placeholder",
     "StarRatingInput.placeholder",
-    "StatusBadge.label",
-    "Toggle.columnWidth",
-    "Toggle.width"
+    "StatusBadge.label"
   ]
 }
