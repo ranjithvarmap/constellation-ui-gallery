@@ -18,6 +18,7 @@ import * as robotSolid from '@pega/cosmos-react-core/lib/components/Icon/icons/r
 
 import { StyledCardContent, StyledGenAIComponent } from './styles';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type HistoryItem = {
   id: string;
@@ -73,9 +74,8 @@ export const PegaExtensionsChatGenAI = (props: ChatGenAIProps) => {
         previous.push(userPrompt);
         return previous;
       });
-      const context = getPConnect().getContextName();
-      (window as any).PCore.getDataPageUtils()
-        .getPageDataAsync(dataViewName, context, parameters, { invalidateCache: true })
+      createPlatform(getPConnect)
+        .dataPages.read(dataViewName, parameters, { fresh: true })
         .then(({ pyMessage }: { pyMessage: string }) => {
           loadResponse(pyMessage ?? genAIErrorMessage);
         })

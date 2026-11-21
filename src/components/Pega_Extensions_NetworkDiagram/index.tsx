@@ -31,6 +31,7 @@ import CustomEdge from './CustomEdge';
 import FloatingEdge from './FloatingEdge';
 import * as resetIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/reset.icon';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(resetIcon);
 interface StringHashMap {
@@ -135,10 +136,7 @@ function Flow(props: any) {
       if (selectionProperty) {
         parameters = { pyGUID: selectionProperty };
       }
-      const context = getPConnect().getContextName();
-      const data = await (window as any).PCore.getDataPageUtils().getPageDataAsync(dataPage, context, parameters, {
-        invalidateCache: true,
-      });
+      const data = await createPlatform(getPConnect).dataPages.read(dataPage, parameters, { fresh: true });
       data.pyNodes.forEach((element: any) => {
         tmpNodesHash[element.pyID] = element.pyLabel;
         initialNodes.push({

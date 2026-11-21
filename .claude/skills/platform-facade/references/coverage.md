@@ -1,64 +1,64 @@
 # Facade coverage map
 
-This table lists the `PCore` calls that gallery runtime code still makes directly
-(stories and tests excluded) and what replaces each one. It was generated from
-the tree on 2026-11-06. After `caseInfo`, `pages` and the REST operations
-were added it stood at 36 runtime files in 28 components, with 28 runtime
-files on the facade.
+Runtime code in the gallery makes **no direct `PCore` calls** (stories and tests
+excluded). Every call the components used to make has a facade member, listed
+below by the platform API it wraps. This was checked against the tree on
+2026-11-21, when the last 28 components were moved over.
 
-Regenerate the component column for any row:
+To confirm nothing has crept back in:
 
 ```bash
-grep -lF "getRestClient()" src/components/Pega_*/*.ts* | grep -v "stories\|test" | cut -d/ -f3 | sort -u
+grep -rn "PCore" src/components | grep -vE "shared/platform|\.test\.|stories|fixtures|\.mdx|\.json:|DESIGN.md" \
+  | grep -vE ":\s*(//|\*|/\*)"
 ```
 
-**When you extend the facade, move the row from the second table to the first.**
+It should print nothing. If the API you need is not below, extend the facade (the
+procedure is in `SKILL.md`) and add a row here.
 
-## Covered: replace with the facade member
+## Platform API to facade member
 
-| Direct call                                                                                                                                                      | Facade member                                                                                                              | Components still calling it directly                                                                                                                       |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getDataApiUtils().getData`                                                                                                                                      | `caseData.query`                                                                                                           | Banner, CPQTree, Calendar, DisplayAttachments, DisplayPDF, GanttChart, Meter, TaskList, UtilityList                                                        |
-| `getDataApiUtils().getCaseEditLock` + `updateCaseEditFieldsData`                                                                                                 | `caseData.updateFields`                                                                                                    | (same set; check each)                                                                                                                                     |
-| `getDataApiUtils().getDataObjectView`                                                                                                                            | `caseData.fetchDetailView`                                                                                                 | (same set; check each)                                                                                                                                     |
-| `getViewResources()` + `createPConnect` + container transient item, to show a record's view                                                                      | `views.loadDetailView`                                                                                                     | CPQTree, DynamicHierarchicalForm, ExpandableTable, GanttChart                                                                                              |
-| `getPubSubUtils().subscribe/unsubscribe` with `ASSIGNMENT_SUBMISSION`, `CREATE_STAGE_SAVED`, `EVENT_DASHBOARD_FILTER_CHANGE`, `EVENT_DASHBOARD_FILTER_CLEAR_ALL` | `events.on(…)`                                                                                                             | Calendar, GanttChart                                                                                                                                       |
-| `getEvents().getCaseEvent()` / `getConstants().PUB_SUB_EVENTS` (only to name one of those events)                                                                | `events.on(…)`                                                                                                             | Calendar, GanttChart, FormWithVerticalStepper                                                                                                              |
-| `getSemanticUrlUtils()` with `ACTION_OPENWORKBYHANDLE`                                                                                                           | `links.caseUrl`                                                                                                            | CPQTree, Calendar, NetworkDiagram, Scheduler, Shortcuts, UtilityList                                                                                       |
-| `getLocaleUtils().getLocaleValue`                                                                                                                                | `text.locale` (or `text.loadingContent` for "Loading content...")                                                          | CPQTree, CompareTableLayout, DisplayPDF, DynamicHierarchicalForm, EditableTableLayout, ExpandableTable, FormWithVerticalStepper, GanttChart, Map, TaskList |
-| `getContextTreeManager().addPageListNode`                                                                                                                        | `contextTree.registerPageList`                                                                                             | CPQTree, DynamicHierarchicalForm, EditableTableLayout, ExpandableTable, JawLayout, Map                                                                     |
-| `getPConnect().getValue(getConstants().CASE_INFO.<X>)`                                                                                                           | `caseInfo.key()` `className()` `caseTypeId()` `assignmentId()` `actionId()` `availableActions()` `actionButtons()` `raw()` | None. All 11 callers migrated.                                                                                                                             |
-| `createPConnect({ meta, options: { pageReference, … } })` then `getActionsApi()`, `getListActions()` or `createComponent()` on a row or embedded page            | `pages.at(pageReference, { meta, … }).actions` / `.listActions` / `.render(meta)`                                          | None. All 14 sites in 8 components migrated.                                                                                                               |
-| `getRestClient().invokeRestApi('loadView', …)`                                                                                                                   | `caseData.loadView`                                                                                                        | None.                                                                                                                                                      |
-| `getRestClient().invokeRestApi('save', …)` then `getContainerUtils().updateCaseContextEtag`                                                                      | `caseData.saveAssignment` (owns both steps)                                                                                | None.                                                                                                                                                      |
-| `getRestClient().invokeRestApi('createDataObject' / 'updateDataObject', …)`                                                                                      | `dataObjects.create` / `dataObjects.update`                                                                                | None.                                                                                                                                                      |
+| Platform call                                                                   | Facade member                                                           |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `getDataApiUtils().getData(view, options, context)`                             | `caseData.query`                                                        |
+| `getDataApiUtils().getData(view, options)`, with no context                     | `caseData.queryUnscoped` (Calendar, GanttChart, CPQTree; see its JSDoc) |
+| `getCaseEditLock` + `updateCaseEditFieldsData`                                  | `caseData.updateFields`                                                 |
+| `getCaseEditLock` + `getContainerUtils().updateCaseContextEtag`                 | `caseData.refreshEtag`                                                  |
+| `getDataObjectView`                                                             | `caseData.fetchDetailView`                                              |
+| `getRestClient().invokeRestApi('loadView')`                                     | `caseData.loadView`                                                     |
+| `invokeRestApi('save')` + `updateCaseContextEtag`                               | `caseData.saveAssignment`                                               |
+| `invokeRestApi('createDataObject' / 'updateDataObject')`                        | `dataObjects.create` / `.update`                                        |
+| `getDataPageUtils().getPageDataAsync`                                           | `dataPages.read` (`{ fresh: true }` sends `invalidateCache`)            |
+| `getViewResources()` + transient container item + `createPConnect`, after fetch | `views.loadDetailView`                                                  |
+| the same, with data already in hand                                             | `views.renderDetailView`                                                |
+| `getViewResources().fetchViewResources` / `updateViewResources`                 | `views.metadata` / `views.addResources`                                 |
+| `createPConnect({ meta, options: { pageReference, … } })` on a row or page      | `pages.at(...)` → `.actions`, `.listActions`, `.render`                 |
+| `getPubSubUtils().subscribe/unsubscribe`                                        | `events.on` (returns `Unsubscribe`)                                     |
+| `getPubSubUtils().publish`                                                      | `events.emit`                                                           |
+| `getMessagingServiceManager().subscribe/unsubscribe`                            | `messaging.subscribe` (returns `Unsubscribe`)                           |
+| `getSemanticUrlUtils()`, `ACTION_OPENWORKBYHANDLE` with page and handle         | `links.caseUrl`                                                         |
+| the same with class and work id only                                            | `links.workUrl` (a different URL from `caseUrl`)                        |
+| `getSemanticUrlUtils()`, `ACTION_SHOWVIEW`                                      | `links.pageUrl`                                                         |
+| `getLocaleUtils().getLocaleValue`                                               | `text.locale`, or `text.loadingContent` for "Loading content..."        |
+| `getContextTreeManager().addPageListNode` / `addViewNode`                       | `contextTree.registerPageList` / `.registerView`                        |
+| `getPConnect().getValue(getConstants().CASE_INFO.<X>)`                          | `caseInfo.key()`, `className()`, `assignmentId()`, `actionId()`, …      |
+| `getAttachmentUtils()` upload, link, list, download                             | `attachments.upload`, `.linkToCase`, `.forCase`, `.download`            |
+| `getComponentsRegistry().getLazyComponent` + `getAssetLoader()`                 | `components.whenAvailable`                                              |
+| `getStore().getState().data[context]` / `dispatch(SET_PROPERTY)`                | `store.contextData` / `store.setProperty`                               |
+| `getContainerUtils().getContainerItems` / `getContainerItemData`                | `containers.items` / `containers.currentItem`                           |
+| `getEnvironmentInfo()`                                                          | `environment.locale`, `.useLocale`, `.timeZone`, `.operatorId`          |
+| `getCascadeManager().registerFields/unRegisterFields`                           | `fields.onChange` (returns `Unsubscribe`)                               |
+| `getFormUtils().isFormValid`                                                    | `forms.isValid`                                                         |
 
-Some calls in the first two rows feed sequences the facade doesn't wrap. For
-example, a component may query and then post-process differently. Check what each
-call site does before swapping it.
-
-## Not covered yet: extend the facade first
-
-These are ordered by how many components each would unblock.
-
-| Direct call                                                                                                                     | Components                                                             | Notes for the new member                                                                                                                                                                                        |
-| ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createPConnect` + `fetchViewResources` + transient container item, rendering a record whose data is already in hand (no fetch) | CPQTree (2 sites), GanttChart                                          | Close to `views.loadDetailView`, but CPQTree feeds node data it already holds. A `views.renderDetailView({ data, viewName, className, id })` would cover both, with `loadDetailView` reduced to fetch + render. |
-| `getStore().getState` / `dispatch`                                                                                              | CheckboxRow, CheckboxTrigger, DynamicHierarchicalForm, ExpandableTable | Reading or writing redux state directly. Find out what each one actually needs; it's often a value PConnect can already give.                                                                                   |
-| `getDataPageUtils().getPageDataAsync`                                                                                           | ChatGenAI, NetworkDiagram, OAuthConnect, OrgBuilder                    | A single-page data page read. Natural home: `caseData` (or a new `dataPages`).                                                                                                                                  |
-| `getMessagingServiceManager().subscribe/unsubscribe`                                                                            | Banner, DisplayAttachments, OAuthConnect                               | WebSocket messages. Should return `Unsubscribe`, like `events.on`.                                                                                                                                              |
-| `getPubSubUtils().publish`                                                                                                      | DisplayAttachments, FormWithVerticalStepper, UtilityList               | `events` has no `emit` yet. Add one for the named events only.                                                                                                                                                  |
-| `getContainerUtils().updateCaseContextEtag`, `getContainerItems`, `getContainerItemData`                                        | Banner, CheckboxTrigger                                                | Banner stores an etag after a `getDataApiUtils` write; follow `saveAssignment`, which owns the same step.                                                                                                       |
-| `getAttachmentUtils().uploadAttachment` + `linkAttachmentsToCase`                                                               | CameraCapture, DisplayAttachments                                      | A two-step sequence, so it belongs in one member.                                                                                                                                                               |
-| `getComponentsRegistry().getLazyComponent`, `getAssetLoader()`                                                                  | CompareTableLayout, EditableTableLayout, ExpandableTable               | Loading platform components and assets for table templates.                                                                                                                                                     |
-| `getContextTreeManager().addViewNode`                                                                                           | CPQTree                                                                | Add next to `registerPageList`, under the same `available` guard.                                                                                                                                               |
-| `getEnvironmentInfo().getOperatorIdentifier`                                                                                    | OAuthConnect                                                           | The current operator's id.                                                                                                                                                                                      |
-| `getCascadeManager().registerFields/unRegisterFields`                                                                           | AutoSave                                                               | A pair; should return teardown.                                                                                                                                                                                 |
-| `getFormUtils()`                                                                                                                | FormWithVerticalStepper                                                | A single caller. Hide it behind the facade only because it is `PCore`.                                                                                                                                          |
+`links` and `environment` need no PConnect, so they are also exported on their
+own for helpers that run outside a component (CPQTree's link builder,
+LangSwitch's page reload). Everything else goes through `createPlatform(getPConnect)`.
 
 ## Stories
 
-42 `demo.stories.tsx` files still assign `window.PCore` themselves, and only 1 uses
-`installPlatformFake`. A story can be migrated as soon as the fake supplies every
-API its component calls. That holds today for the components in the first table,
-once their runtime code is migrated.
+25 `demo.stories.tsx` files still assign `window.PCore` themselves:
+BarCode, CPQTree, Calendar, CardGallery, CaseLauncher, CaseReference, ChatGenAI,
+CompareTableLayout, DateInput, GanttChart, ImageCarousel, JapaneseInput,
+LangSwitch, MaskedInput, NetworkDiagram, OAuthConnect, OrgBuilder,
+PasswordInput, QRCode, Scheduler, SecureRichText, Shortcuts, SignatureCapture,
+StarRatingInput and Toggle. The fake now supplies every API their components
+call, so each can move to `installPlatformFake` on its own.

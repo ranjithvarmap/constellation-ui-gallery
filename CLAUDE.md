@@ -35,10 +35,10 @@ case). Check `type` in `config.json` before changing a component.
    `config.json` and the props type separately — that is how they drift.
 2. **No `PCore` outside `shared/platform`.** Go through `createPlatform(getPConnect)`.
    If the API you need is missing, add it to `types.ts`, `index.ts` and `fake.ts`
-   together. 36 runtime files across 28 components still reach `PCore` directly;
-   do not copy them. The `platform-facade` skill has the procedure and a coverage map.
+   together. No runtime file reaches `PCore` directly any more; keep it that way.
+   The `platform-facade` skill has the procedure and a coverage map.
 3. **Stories and tests use `installPlatformFake`**, not a hand-rolled
-   `window.PCore = {...}` stub. 42 older stories still have one; do not copy them.
+   `window.PCore = {...}` stub. 25 older stories still have one; do not copy them.
 4. **Every `config.json` property must be read by the component.**
    `tools/config-parity/known-drift.json` only ever shrinks — remove an entry when
    you fix it, never add one.

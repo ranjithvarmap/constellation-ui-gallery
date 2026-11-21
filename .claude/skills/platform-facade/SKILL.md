@@ -89,9 +89,9 @@ guessing parameters.
 
 ## When the API you need is missing
 
-[references/coverage.md](references/coverage.md) maps each `PCore` call the
-gallery still makes directly to its facade member, or marks it as not covered yet.
-If it's not covered, extend the facade. Change all four files in one change:
+[references/coverage.md](references/coverage.md) maps each platform API the
+gallery uses to its facade member. If the call you need is not there, extend the
+facade. Change all four files in one change:
 
 1. **`types.ts`**: add the member to an existing interface, or a new interface
    on `Platform`. Write JSDoc that says what it does and anything the caller
@@ -175,7 +175,8 @@ export const Default: Story = {
 
 ## Migrating an existing component
 
-Work one component per change:
+Runtime code is fully migrated; this is for a story, or for code brought in from
+elsewhere. Work one component per change:
 
 1. List its `PCore` calls with the grep above, and look each one up in
    `references/coverage.md`.

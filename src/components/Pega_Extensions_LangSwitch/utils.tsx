@@ -1,10 +1,8 @@
+import { environment } from '../shared/platform';
+
 export type LocaleConfiguration = {
   locale: string;
   name: string;
-};
-
-const runtime = globalThis as typeof globalThis & {
-  PCore?: any;
 };
 
 const intlRuntime = Intl as typeof Intl & {
@@ -54,11 +52,11 @@ export const resolveConfiguredLocale = (locale: string, languages: LocaleConfigu
 };
 
 export const getCurrentLocale = () => {
-  return runtime.PCore?.getEnvironmentInfo?.()?.getUseLocale?.() ?? '';
+  return environment.useLocale() ?? '';
 };
 
 export const getCurrentTimezone = () => {
-  return runtime.PCore?.getEnvironmentInfo?.()?.getTimeZone?.() ?? '';
+  return environment.timeZone() ?? '';
 };
 
 export const getBrowserTimezone = () => {
@@ -247,7 +245,6 @@ export const prioritizeTimezones = (
 };
 
 export const langSwitchRuntime = {
-  runtime,
   reloadPage: (locale = '') => {
     const resolvedLocale = locale.trim() || getCurrentLocale().trim();
 

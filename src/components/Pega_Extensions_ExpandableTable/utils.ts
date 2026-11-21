@@ -129,8 +129,7 @@ const getRowEmbedClass = (getPConnect: any, embedDataRef: string, rowIndex: numb
   }
   const basePageRef = getBasePageReference(getPConnect);
   const rowPageRef = buildRowPageReference(basePageRef, embedDataRef, rowIndex);
-  const context = getPConnect().getContextName();
-  const storeData = (window as any).PCore.getStore()?.getState()?.data?.[context];
+  const storeData = createPlatform(getPConnect).store.contextData();
   const row = getNestedStoreValue(storeData, rowPageRef);
   return row?.pxObjClass || row?.pyObjClass || '';
 };
@@ -141,8 +140,8 @@ const ensureViewResources = async (detailViewName: string, embedClass: string, g
     return;
   }
 
-  const { fetchViewResources, updateViewResources } = (window as any).PCore.getViewResources();
-  const cachedMetadata = fetchViewResources(detailViewName, getPConnect(), embedClass);
+  const { views } = createPlatform(getPConnect);
+  const cachedMetadata = views.metadata(detailViewName, embedClass);
   if (hasViewMetadata(cachedMetadata)) {
     loadedViewResources.add(cacheKey);
     return;
@@ -160,7 +159,7 @@ const ensureViewResources = async (detailViewName: string, embedClass: string, g
     context: pConnect.getContextName(),
   });
 
-  await updateViewResources(response.data);
+  await views.addResources(response.data);
   loadedViewResources.add(cacheKey);
 };
 
@@ -183,7 +182,7 @@ export const loadRowDetailView = async (props: LoadRowDetailProps) => {
   const contextName = pConnect.getContextName();
   const basePageRef = getBasePageReference(getPConnect);
   const pageReference = buildRowPageReference(basePageRef, embedDataRef, rowIndex);
-  const metadata = (window as any).PCore.getViewResources().fetchViewResources(detailViewName, pConnect, embedClass);
+  const metadata = createPlatform(() => pConnect).views.metadata(detailViewName, embedClass);
 
   return createPlatform(() => pConnect)
     .pages.at(pageReference, {

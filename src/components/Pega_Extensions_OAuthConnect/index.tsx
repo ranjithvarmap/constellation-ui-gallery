@@ -14,6 +14,7 @@ import '../shared/create-nonce';
 
 import * as NodeIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/node.icon';
 import * as ChainIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/chain.icon';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(NodeIcon, ChainIcon);
 
@@ -43,19 +44,15 @@ export const PegaExtensionsOAuthConnect = (props: OAuthConnectProps) => {
 
   const getMashupDetails = useCallback(
     async (authProfileName: any, Event: any) => {
-      const gadgetId =
-        getPConnect().getCaseInfo().getKey() + (window as any).PCore.getEnvironmentInfo().getOperatorIdentifier();
+      const gadgetId = getPConnect().getCaseInfo().getKey() + createPlatform(getPConnect).environment.operatorId();
       const mashupDetails = new Promise((resolve) => {
         const parameters = {
           Event,
           ProfileName: authProfileName,
           gadgetId,
         };
-        const context = getPConnect().getContextName();
-        (window as any).PCore.getDataPageUtils()
-          .getPageDataAsync('D_OAuthConnect', context, parameters, {
-            invalidateCache: true,
-          })
+        createPlatform(getPConnect)
+          .dataPages.read('D_OAuthConnect', parameters, { fresh: true })
           .then((response: any) => {
             resolve(response);
           })
@@ -108,19 +105,15 @@ export const PegaExtensionsOAuthConnect = (props: OAuthConnectProps) => {
     const mashupSubfilter = {
       matcher: 'OAUTH2',
       criteria: {
-        ID: getPConnect().getCaseInfo().getKey() + (window as any).PCore.getEnvironmentInfo().getOperatorIdentifier(),
+        ID: getPConnect().getCaseInfo().getKey() + createPlatform(getPConnect).environment.operatorId(),
       },
     };
-    const mashupSubId = (window as any).PCore.getMessagingServiceManager().subscribe(
-      mashupSubfilter,
-      loadMashup,
-      getPConnect().getContextName(),
-    );
+    const stopMessages = createPlatform(getPConnect).messaging.subscribe(mashupSubfilter, loadMashup);
 
     loadMashup();
 
     return () => {
-      (window as any).PCore.getMessagingServiceManager().unsubscribe(mashupSubId);
+      stopMessages();
     };
   }, [getMashupDetails, getPConnect, profileName]);
 

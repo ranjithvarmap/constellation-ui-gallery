@@ -1,5 +1,6 @@
 import { type MouseEvent } from 'react';
 import { getKindFromMimeType, DateTimeDisplay, MetaList, FileVisual, Icon, Button } from '@pega/cosmos-react-core';
+import { createPlatform } from '../shared/platform';
 
 export const canPreviewFile = (type: string) => {
   return type === 'image' || type === 'pdf';
@@ -52,8 +53,8 @@ const fileDownload = (data: string, attachment: any, headers: any) => {
  */
 export const downloadFile = (attachment: any, getPConnect: any, setImages: any, bForceDownload: boolean) => {
   const kind = getKindFromMimeType(attachment.mimeType);
-  (window as any).PCore.getAttachmentUtils()
-    .downloadAttachment(attachment.ID, getPConnect().getContextName(), attachment.responseType)
+  createPlatform(getPConnect)
+    .attachments.download(attachment.ID, attachment.responseType)
     .then((content: any) => {
       if (canPreviewFile(kind) && !bForceDownload) {
         let arrayBuf: Uint8Array | BlobPart;

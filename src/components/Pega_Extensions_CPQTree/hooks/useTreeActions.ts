@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { PROPERTY_NAMES } from '../constants';
+import { createPlatform } from '../../shared/platform';
 
 type UpdateFieldValueFn = (fieldId: string, newValue: string) => void;
 type ReloadTreeFn = (updatedData?: any) => Promise<void>;
@@ -25,9 +26,9 @@ interface TreeActionsConfig {
 /**
  * Creates a PConnect environment for dispatching actions
  */
-const createPConnectEnv = (getPConnect: any, reference: string, isConfigField: boolean = false) => {
-  const PCore = (window as any).PCore;
-  if (!PCore?.getStore) return null;
+const scopeToField = (getPConnect: any, reference: string, isConfigField: boolean = false) => {
+  const platform = createPlatform(getPConnect);
+  if (!platform.store.available) return null;
 
   // For configuration fields, the reference already points to ConfiguredFieldValue
   // We want the pageReference to include ConfiguredFieldValue (not strip it)
@@ -37,17 +38,12 @@ const createPConnectEnv = (getPConnect: any, reference: string, isConfigField: b
     ? reference // Keep full reference including ConfiguredFieldValue
     : reference.substring(0, reference.lastIndexOf('.'));
 
-  const messageConfig = {
-    options: {
-      context: getPConnect().getContextName(),
-      pageReference: pageReference,
-      hasForm: true,
-      viewName: getPConnect().viewName,
-      target: getPConnect().getTarget(),
-    },
-  };
-
-  return PCore.createPConnect(messageConfig);
+  return platform.pages.at(pageReference, {
+    meta: undefined,
+    hasForm: true,
+    viewName: getPConnect().viewName,
+    target: getPConnect().getTarget(),
+  });
 };
 
 /**
@@ -59,10 +55,10 @@ const dispatchFieldUpdate = (
   value: number | string,
   isConfigField: boolean = false,
 ) => {
-  const c11nEnv = createPConnectEnv(getPConnect, reference, isConfigField);
-  if (!c11nEnv) return;
+  const page = scopeToField(getPConnect, reference, isConfigField);
+  if (!page) return;
 
-  const actions = c11nEnv.getPConnect()?.getActionsApi();
+  const actions = page.actions;
   if (!actions) return;
 
   // For configuration fields, the property name should be .FieldValue, not .ConfiguredFieldValue
@@ -79,9 +75,9 @@ const dispatchFieldUpdate = (
  * Returns the updated tree data from the data page
  */
 const saveTreeData = async (getPConnect: any, dataPage: string, changes: ChangeEntry[]): Promise<any> => {
-  const PCore = (window as any).PCore;
-  if (!PCore?.getDataPageUtils || !dataPage) return null;
-  const caseInstanceKey = getPConnect().getValue(PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+  const platform = createPlatform(getPConnect);
+  if (!platform.dataPages.available || !dataPage) return null;
+  const caseInstanceKey = platform.caseInfo.key();
 
   const payload = {
     dataViewParameters: {
@@ -89,7 +85,7 @@ const saveTreeData = async (getPConnect: any, dataPage: string, changes: ChangeE
       caseInstanceKey,
     },
   };
-  const response = await PCore.getDataApiUtils().getData(dataPage, payload);
+  const response: any = await platform.caseData.queryUnscoped(dataPage, payload);
   return response.data.data[0];
 };
 
@@ -189,8 +185,7 @@ export const useTreeActions = ({ getPConnect, updateFieldValue, dataPage, reload
       addChange(changePath, String(value));
 
       // Dispatch to PCore store
-      const PCore = (window as any).PCore;
-      if (PCore?.getStore) {
+      if (createPlatform(getPConnect).store.available) {
         const reference = `caseInfo.content.${propertyPath}`;
         dispatchFieldUpdate(getPConnect, reference, value, isConfigField);
       }

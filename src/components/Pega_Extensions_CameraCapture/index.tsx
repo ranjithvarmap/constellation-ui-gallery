@@ -35,7 +35,6 @@ export const PegaExtensionsCameraCapture = (props: CameraComponentProps) => {
   const [videoDims, setVideoDims] = useState<{ width: number; height: number } | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const pConn = getPConnect();
-  const context = pConn.getContextName();
 
   const IMAGE_MIME = 'image/png';
 
@@ -200,7 +199,7 @@ export const PegaExtensionsCameraCapture = (props: CameraComponentProps) => {
       ID: id,
     };
 
-    await (window as any).PCore.getAttachmentUtils().linkAttachmentsToCase(caseInfo?.ID, [file], 'File', context);
+    await createPlatform(() => pConn).attachments.linkToCase(caseInfo?.ID, [file], 'File');
     stopCamera();
   };
 
@@ -212,12 +211,10 @@ export const PegaExtensionsCameraCapture = (props: CameraComponentProps) => {
     const file = base64ToFile(capturedImg, fileName);
     (file as any).ID = id;
     try {
-      const res = await (window as any).PCore.getAttachmentUtils().uploadAttachment(
-        file as any,
-        onUploadProgress,
-        errorHandler,
-        context,
-      );
+      const res = await createPlatform(() => pConn).attachments.upload(file, {
+        onProgress: onUploadProgress,
+        onError: errorHandler,
+      });
 
       if (!res?.ID) {
         throw new Error('Upload failed');

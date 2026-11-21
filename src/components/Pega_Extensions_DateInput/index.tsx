@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createGlobalStyle } from 'styled-components';
 import { Configuration, DateInput, Text, withConfiguration, type DateInputProps } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 /** Picker popover is portaled outside the field; scope via data-testid. */
 const DatePickerOverlayBorderFix = createGlobalStyle`
@@ -51,7 +52,7 @@ export const normalizeDateValue = (valueAsISOString?: string) => {
 
 export const resolveLocale = (
   localeOverride?: string,
-  environmentInfo?: { getLocale?: () => string; getUseLocale?: () => string },
+  environmentInfo?: { getLocale?: () => string | undefined; getUseLocale?: () => string | undefined },
 ) => {
   if (localeOverride) {
     return localeOverride;
@@ -108,9 +109,8 @@ export const PegaExtensionsDateInput = (props: DateInputExtProps) => {
   const actions = pConn.getActionsApi();
   const propName = pConn.getStateProps().value;
   const hasValueChange = useRef(false);
-  const environmentInfo = (window as any).PCore?.getEnvironmentInfo?.() as
-    | { getLocale?: () => string; getUseLocale?: () => string }
-    | undefined;
+  const { environment } = createPlatform(getPConnect);
+  const environmentInfo = { getLocale: environment.locale, getUseLocale: environment.useLocale };
   const resolvedLocale = resolveLocale(localeOverride, environmentInfo);
 
   const [inputValue, setInputValue] = useState(value);

@@ -25,6 +25,7 @@ import { Button, Icon, registerIcon, Text } from '@pega/cosmos-react-core';
 import * as resetIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/reset.icon';
 import * as downloadIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/download.icon';
 import * as informationIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/information.icon';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(resetIcon, downloadIcon, informationIcon);
 
@@ -80,11 +81,14 @@ export function OrganizationBuilder({
     setLoadError(null);
     async function loadData() {
       try {
-        const context = getPConnect().getContextName();
         const parameters = selectionProperty ? { pyGUID: selectionProperty } : undefined;
-        const data = (await (window as any).PCore.getDataPageUtils().getPageDataAsync(dataPage, context, parameters, {
-          invalidateCache: true,
-        })) as OrgBuilderDataPageResponse;
+        const data = await createPlatform(getPConnect).dataPages.read<OrgBuilderDataPageResponse>(
+          dataPage,
+          parameters,
+          {
+            fresh: true,
+          },
+        );
         if (cancelled) return;
         if (!data?.pyReferenceOrganization || !data?.pyTargetOrganization) {
           setLoadError('Data page must return pyReferenceOrganization and pyTargetOrganization');

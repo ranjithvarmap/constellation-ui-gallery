@@ -203,9 +203,8 @@ export const PegaExtensionsDisplayAttachments = (props: UtilityListProps) => {
   const initialLoad = useCallback(() => {
     const pConn = getPConnect();
     if (useAttachmentEndpoint) {
-      const attachmentUtils = (window as any).PCore.getAttachmentUtils();
-      attachmentUtils
-        .getCaseAttachments(caseID, pConn.getContextName())
+      createPlatform(() => pConn)
+        .attachments.forCase(caseID as string)
         .then((resp: any) => loadAttachments(resp))
         .catch(() => {
           setLoading(false);
@@ -238,16 +237,12 @@ export const PegaExtensionsDisplayAttachments = (props: UtilityListProps) => {
         ID: caseID,
       },
     };
-    const attachSubId = (window as any).PCore.getMessagingServiceManager().subscribe(
-      filter,
-      () => {
-        /* If an attachment is added- force a reload of the events */
-        initialLoad();
-      },
-      getPConnect().getContextName(),
-    );
+    const stopMessages = createPlatform(getPConnect).messaging.subscribe(filter, () => {
+      /* If an attachment is added- force a reload of the events */
+      initialLoad();
+    });
     return () => {
-      (window as any).PCore.getMessagingServiceManager().unsubscribe(attachSubId);
+      stopMessages();
     };
   }, [categories, useLightBox, useAttachmentEndpoint, enableDownloadAll, getPConnect, initialLoad]);
 

@@ -33,26 +33,8 @@ export const PegaExtensionsAutoSave = (props: AutoSaveProps) => {
         content,
       });
     };
-    const subId = Date.now();
-    /* Register field change event. */
-    (window as any).PCore.getCascadeManager().registerFields(
-      pConn.getContextName(),
-      pConn.getPageReference(),
-      [propertyName],
-      saveAssignment,
-      subId,
-    );
-
-    /* Unregister fields */
-    return () => {
-      (window as any).PCore.getCascadeManager().unRegisterFields(
-        pConn.getContextName(),
-        pConn.getPageReference(),
-        [propertyName],
-        saveAssignment,
-        subId,
-      );
-    };
+    /* Save on every change to the field; the returned teardown unregisters it. */
+    return createPlatform(() => pConn).fields.onChange([propertyName], saveAssignment);
   }, [pConn, propertyName]);
 
   if (!propertyName) return null;

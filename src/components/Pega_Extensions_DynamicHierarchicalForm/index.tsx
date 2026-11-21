@@ -175,8 +175,7 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
 
     const tmpTabs: Array<any> = [];
     const tmpItems: Array<MenuItemProps> = [];
-    const context = getPConnect().getContextName();
-    const content: any = (window as any).PCore.getStore().getState().data?.[context]?.caseInfo?.content;
+    const content: any = createPlatform(getPConnect).store.contextData()?.caseInfo?.content;
     productRef.current = SelectedProducts[0].authorContext.substring(1);
 
     /* In 24.2, we need to initialize the context tree manager. Registered only
@@ -210,9 +209,8 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
       }
       if (fieldId < tmpFields.length) {
         /* Match was made */
-        const metadata = (window as any).PCore.getViewResources().fetchViewResources(
+        const metadata = createPlatform(getPConnect).views.metadata(
           tmpFields[fieldId].name,
-          getPConnect(),
           tmpFields[fieldId].ruleClass,
         );
         const myElem = createPlatform(getPConnect)

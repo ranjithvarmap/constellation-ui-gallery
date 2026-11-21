@@ -27,16 +27,9 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
   const [isDismissed, setIsDismissed] = useState(false);
 
   const updateItemDetails = () => {
-    const caseInstanceKey = createPlatform(getPConnect).caseInfo.key();
-    const context = getPConnect().getContextName();
-
-    (window as any).PCore.getDataApiUtils()
-      .getCaseEditLock(caseInstanceKey, context)
-      .then((response: any) => {
-        /* Upon successful, update the latest etag. */
-        const updatedEtag = response.headers.etag;
-        (window as any).PCore.getContainerUtils().updateCaseContextEtag(getPConnect().getContextName(), updatedEtag);
-      });
+    const platform = createPlatform(getPConnect);
+    /* Store the latest etag, so the next write is not stale. */
+    platform.caseData.refreshEtag(platform.caseInfo.key() as string);
   };
 
   const refreshForm = useCallback(() => {
@@ -71,7 +64,7 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
         },
       });
 
-    const items = Object.keys((window as any).PCore.getContainerUtils().getContainerItems('app/primary'));
+    const items = Object.keys(createPlatform(getPConnect).containers.items('app/primary'));
     const tmpContainerName = items[items.length - 1];
 
     const page = createPlatform(getPConnect).pages.at('caseInfo.content', {
@@ -139,16 +132,12 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
         ID: caseID,
       },
     };
-    const attachSubId = (window as any).PCore.getMessagingServiceManager().subscribe(
-      filter,
-      () => {
-        loadMessages();
-      },
-      getPConnect().getContextName(),
-    );
+    const stopMessages = createPlatform(getPConnect).messaging.subscribe(filter, () => {
+      loadMessages();
+    });
     loadMessages();
     return () => {
-      (window as any).PCore.getMessagingServiceManager().unsubscribe(attachSubId);
+      stopMessages();
     };
   }, []);
 
