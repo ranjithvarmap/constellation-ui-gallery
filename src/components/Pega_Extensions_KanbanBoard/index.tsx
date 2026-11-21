@@ -219,10 +219,7 @@ export const PegaExtensionsKanbanBoard = (props: KanbanBoardProps) => {
         </CardHeader>
         <MainCard height={height}>
           {loading ? (
-            <Progress
-              placement='local'
-              message={createPlatform(getPConnect).text.loadingContent()}
-            />
+            <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />
           ) : (
             groupList.map((group: string) => (
               <Column key={group} id={group} title={group} tasks={columns[group]?.taskList} getPConnect={getPConnect} />

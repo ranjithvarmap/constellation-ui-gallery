@@ -42,12 +42,7 @@ export const Task = (props: TaskProps) => {
             <Text variant='h3'>{title}</Text>
           </CardHeader>
           <CardContent>
-            {newdetails || (
-              <Progress
-                placement='inline'
-                message={createPlatform(getPConnect).text.loadingContent()}
-              />
-            )}
+            {newdetails || <Progress placement='inline' message={createPlatform(getPConnect).text.loadingContent()} />}
           </CardContent>
         </Card>
       </StyledCardContent>
@@ -75,10 +70,7 @@ export const Task = (props: TaskProps) => {
             </CardHeader>
             <CardContent>
               {newdetails || (
-                <Progress
-                  placement='inline'
-                  message={createPlatform(getPConnect).text.loadingContent()}
-                />
+                <Progress placement='inline' message={createPlatform(getPConnect).text.loadingContent()} />
               )}
             </CardContent>
           </Card>

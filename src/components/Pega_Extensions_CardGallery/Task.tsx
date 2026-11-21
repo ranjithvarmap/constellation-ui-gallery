@@ -39,12 +39,7 @@ export const Task = (props: TaskProps) => {
           <Text variant='h3'>{title}</Text>
         </CardHeader>
         <CardContent>
-          {details || (
-            <Progress
-              placement='inline'
-              message={createPlatform(getPConnect).text.loadingContent()}
-            />
-          )}
+          {details || <Progress placement='inline' message={createPlatform(getPConnect).text.loadingContent()} />}
         </CardContent>
       </Card>
     </StyledCardContent>

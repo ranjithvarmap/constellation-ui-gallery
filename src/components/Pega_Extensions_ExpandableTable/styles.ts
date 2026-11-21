@@ -22,6 +22,8 @@ export default styled.div(() => {
       min-width: 0;
     }
 
+    /* Visually-hidden text needs literal 1px sizes; theme spacing cannot express them. */
+    /* stylelint-disable unit-allowed-list */
     & .visually-hidden {
       position: absolute;
       width: 1px;
@@ -33,6 +35,7 @@ export default styled.div(() => {
       white-space: nowrap;
       border: 0;
     }
+    /* stylelint-enable unit-allowed-list */
 
     & tr > th:first-child {
       position: sticky;

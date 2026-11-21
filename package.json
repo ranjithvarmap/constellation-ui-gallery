@@ -29,6 +29,7 @@
     "fix:format": "prettier --color --loglevel warn -w .",
     "fix:pkg": "sort-package-json package.json packages/*/package.json",
     "fix:styles": "stylelint --fix \"./**/*.@(js|jsx|ts|tsx)\"",
+    "generate": "ts-node -P tools/generator/tsconfig.json tools/generator/cli.ts",
     "help": "custom-dx-components showHelp",
     "importComponent": "custom-dx-components importComponent",
     "importLibVersion": "custom-dx-components importArchive",
@@ -48,6 +49,7 @@
     "restoreLibVersion": "custom-dx-components restore",
     "setPermanent": "custom-dx-components setPermanent",
     "showStatus": "custom-dx-components showStatus",
+    "snapshot": "ts-node -P tools/snapshot/tsconfig.json tools/snapshot/cli.ts",
     "start": "storybook dev --port 6006",
     "startDevServer": "custom-dx-components startDevServer",
     "storeLibVersion": "custom-dx-components storeComponents",
@@ -59,9 +61,7 @@
     "update": "custom-dx-components update",
     "validate": "custom-dx-components buildComponent",
     "validate-schema": "custom-dx-components validateSchema",
-    "validateAll": "custom-dx-components buildAllComponents",
-    "generate": "ts-node -P tools/generator/tsconfig.json tools/generator/cli.ts",
-    "snapshot": "ts-node -P tools/snapshot/tsconfig.json tools/snapshot/cli.ts"
+    "validateAll": "custom-dx-components buildAllComponents"
   },
   "dependencies": {
     "@arcgis/core": "^5.1.0",

@@ -224,12 +224,7 @@ export const PegaExtensionsCardGallery = (props: CardGalleryProps) => {
 
   const content = useMemo(() => {
     if (loading) {
-      return genState(
-        <Progress
-          placement='block'
-          message={createPlatform(getPConnect).text.loadingContent()}
-        />,
-      );
+      return genState(<Progress placement='block' message={createPlatform(getPConnect).text.loadingContent()} />);
     }
     if (errorMsg) {
       return genState(<ErrorState message={errorMsg} />);
