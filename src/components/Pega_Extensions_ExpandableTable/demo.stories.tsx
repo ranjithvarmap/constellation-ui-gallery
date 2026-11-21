@@ -2,6 +2,7 @@ import type { StoryObj } from '@storybook/react-webpack5';
 import { Text } from '@pega/cosmos-react-core';
 import { PegaExtensionsExpandableTable, type ExpandableTableProps } from './index';
 import { MockDetailView, installExpandableTablePlatform } from './demo.fixtures';
+import { installPlatformFake } from '../shared/platform/fake';
 
 type configInfo = {
   value?: Array<any>;
@@ -105,108 +106,65 @@ const getRowIndexFromPageRef = (pageRef: string): number => {
   return matches.length ? parseInt(matches[matches.length - 1][1], 10) : 0;
 };
 
-const createMockPCore = (args: ExpandableTableProps) => ({
-  getLocaleUtils: () => ({
-    getLocaleValue: (val: string) => val,
-  }),
-  getConstants: () => ({
-    CASE_INFO: {
-      CASE_INFO_ID: 'caseInfo.ID',
+/* The nested-table demo: a store with one order holding line items, a view
+   loaded over REST, and rows rendered as nested tables or detail views. */
+const installNestedTablePlatform = (args: ExpandableTableProps) =>
+  installPlatformFake({
+    store: {
+      workarea: {
+        caseInfo: {
+          content: {
+            orders: [{ pxObjClass: 'Data-Order', LineItems: [{ pxObjClass: 'Data-LineItem' }] }],
+          },
+        },
+      },
     },
-  }),
-  getContextTreeManager: () => ({
-    addPageListNode: () => {},
-  }),
-  getViewResources: () => ({
-    fetchViewResources: (name: string, _pConnect: any, ruleClass: string) => ({
-      type: 'View',
-      config: {
-        name,
-        ruleClass,
-      },
-    }),
-    updateViewResources: () => Promise.resolve(),
-  }),
-  getRestClient: () => ({
-    invokeRestApi: () =>
-      Promise.resolve({
-        data: {
-          uiResources: {
-            root: {
-              config: { name: args.detailViewName },
-            },
-          },
-        },
-      }),
-  }),
-  getStore: () => ({
-    getState: () => ({
-      data: {
-        workarea: {
-          caseInfo: {
-            content: {
-              orders: [{ pxObjClass: 'Data-Order', LineItems: [{ pxObjClass: 'Data-LineItem' }] }],
-            },
-          },
-        },
-      },
-    }),
-  }),
-  createPConnect: (context: any) => ({
-    getPConnect: () => ({
-      createComponent: (f: any) => {
-        if (f.type === 'View' || f.config?.name) {
-          const pageRef: string = context.options.pageReference ?? '';
-          const rowIndex = getRowIndexFromPageRef(pageRef);
-
-          if (f.config?.name === 'OrderLineItems') {
-            const nestedView = genNestedLineItemsResponse();
-            const nestedProps: ExpandableTableProps = {
-              detailViewName: '',
-              getPConnect: () => ({
-                meta: { name: 'NestedLineItems' },
-                options: { viewName: 'OrderLineItems', pageReference: pageRef },
-                getLocalizedValue: (val: string) => val,
-                getContextName: () => 'workarea',
-                getTarget: () => 'workarea',
-                getPageReference: () => pageRef,
-                getCaseInfo: () => ({ getKey: () => 'S-123' }),
-                getValue: () => 'S-123',
-                getChildren: () => nestedView.children,
-                getRawMetadata: () => nestedView,
-                getInheritedProps: () => nestedView.config.inheritedProps,
-                setInheritedProp: () => {},
-                setValue: () => {},
-                resolveConfigProps: (fieldConfig: any) => ({
-                  ...fieldConfig,
-                  propref: fieldConfig.value,
-                  pageref: 'LineItems',
-                  contextClass: 'Data-LineItem',
-                }),
-              }),
-            };
-            return <PegaExtensionsExpandableTable {...nestedProps} />;
-          }
-
-          return <MockDetailView rowIndex={rowIndex} viewName={f.config?.name ?? ''} />;
-        }
-        const pageRef: string = context.options.pageReference ?? '';
+    restResponses: {
+      loadView: { data: { uiResources: { root: { config: { name: args.detailViewName } } } } },
+    },
+    viewMetadata: (name: string, ruleClass: string) => ({ type: 'View', config: { name, ruleClass } }),
+    renderView: (f: any, options: Record<string, any>, pageMeta: any) => {
+      if (f.type === 'View' || f.config?.name) {
+        const pageRef: string = options.pageReference ?? '';
         const rowIndex = getRowIndexFromPageRef(pageRef);
-        const val = Array.isArray(context.meta.config.value)
-          ? context.meta.config.value[rowIndex]
-          : context.meta.config.value;
-        return <Text>{`${val ?? ''}`}</Text>;
-      },
-      getTarget: () => 'workarea',
-    }),
-  }),
-  getComponentsRegistry: () => ({
-    getLazyComponent: (f: string) => f,
-  }),
-  getAssetLoader: () => ({
-    getLoader: () => () => Promise.resolve(),
-  }),
-});
+
+        if (f.config?.name === 'OrderLineItems') {
+          const nestedView = genNestedLineItemsResponse();
+          const nestedProps: ExpandableTableProps = {
+            detailViewName: '',
+            getPConnect: () => ({
+              meta: { name: 'NestedLineItems' },
+              options: { viewName: 'OrderLineItems', pageReference: pageRef },
+              getLocalizedValue: (val: string) => val,
+              getContextName: () => 'workarea',
+              getTarget: () => 'workarea',
+              getPageReference: () => pageRef,
+              getCaseInfo: () => ({ getKey: () => 'S-123' }),
+              getValue: () => 'S-123',
+              getChildren: () => nestedView.children,
+              getRawMetadata: () => nestedView,
+              getInheritedProps: () => nestedView.config.inheritedProps,
+              setInheritedProp: () => {},
+              setValue: () => {},
+              resolveConfigProps: (fieldConfig: any) => ({
+                ...fieldConfig,
+                propref: fieldConfig.value,
+                pageref: 'LineItems',
+                contextClass: 'Data-LineItem',
+              }),
+            }),
+          };
+          return <PegaExtensionsExpandableTable {...nestedProps} />;
+        }
+
+        return <MockDetailView rowIndex={rowIndex} viewName={f.config?.name ?? ''} />;
+      }
+      const pageRef: string = options.pageReference ?? '';
+      const rowIndex = getRowIndexFromPageRef(pageRef);
+      const val = Array.isArray(pageMeta.config.value) ? pageMeta.config.value[rowIndex] : pageMeta.config.value;
+      return <Text>{`${val ?? ''}`}</Text>;
+    },
+  });
 
 const genOrdersResponse = () => {
   const demoView = {
@@ -251,7 +209,7 @@ const genOrdersResponse = () => {
 
 export const NestedTable: Story = {
   render: (args: ExpandableTableProps) => {
-    (window as any).PCore = createMockPCore(args);
+    installNestedTablePlatform(args);
 
     const ordersView = genOrdersResponse();
     const props: ExpandableTableProps = {

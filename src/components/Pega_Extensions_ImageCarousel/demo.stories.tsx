@@ -18,17 +18,10 @@ export default {
   component: PegaExtensionsImageCarousel,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    /* Nothing */
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsImageCarousel>;
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
     const props = {
       ...args,
       getPConnect: () => {

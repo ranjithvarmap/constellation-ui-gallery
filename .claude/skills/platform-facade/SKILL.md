@@ -150,16 +150,21 @@ export const Default: Story = {
 };
 ```
 
-| Option                        | Use                                                                                                        |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `rows`                        | What `caseData.query` resolves with                                                                        |
-| `detailData`                  | `dataInfo` for detail-view fetches                                                                         |
-| `renderView`                  | What a loaded detail view renders; defaults to a `data-testid="detail-view"` marker                        |
-| `pConnect`                    | Override or add `getPConnect()` methods, e.g. `getValue`                                                   |
-| `actions`                     | Override or add actions-API methods, e.g. make `openLocalAction` visible in a story                        |
-| `contextTreeAvailable: false` | Simulate an older platform                                                                                 |
-| `caseInfo`                    | The case `platform.caseInfo` reads (`key`, `className`, `activeActionId`, …); omit for a page with no case |
-| `restResponses`               | What each REST endpoint resolves with, e.g. `{ save: { headers: { etag: 'e-2' } } }`                       |
+| Option                              | Use                                                                                                              |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `rows`                              | What `caseData.query` resolves with; a function is read on every query (GanttChart keeps rows in storage)        |
+| `detailData`                        | `dataInfo` for detail-view fetches                                                                               |
+| `renderView`                        | What a loaded detail view renders: `(meta, options, pageMeta)`; defaults to a `data-testid="detail-view"` marker |
+| `viewMetadata`                      | What `views.metadata` returns for `(viewName, className)`                                                        |
+| `pConnect`                          | Override or add `getPConnect()` methods, e.g. `getValue`                                                         |
+| `actions`                           | Override or add actions-API methods, e.g. make `openLocalAction` visible in a story                              |
+| `contextTreeAvailable: false`       | Simulate an older platform                                                                                       |
+| `caseInfo`                          | The case `platform.caseInfo` reads (`key`, `className`, `activeActionId`, …); omit for a page with no case       |
+| `restResponses`                     | What each REST endpoint resolves with, e.g. `{ save: { headers: { etag: 'e-2' } } }`                             |
+| `dataPages` / `readDataPage`        | What `dataPages.read` resolves with: by name, or computed from `(dataPage, parameters)`                          |
+| `environment`                       | `locale`, `useLocale`, `timeZone`, `operatorId` for `platform.environment`                                       |
+| `onFieldUpdate`                     | Called with each `caseData.updateFields` write, so a story can persist it                                        |
+| `store`, `values`, `containerItems` | Redux store data by context, extra `getValue` paths, and container items                                         |
 
 - For a component that never touches `PCore`, use
   `createFakeGetPConnect(overrides)`. It doesn't install a global and doesn't

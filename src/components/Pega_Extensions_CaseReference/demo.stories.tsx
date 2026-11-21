@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsCaseReference } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 export default {
   title: 'Fields/Case Reference',
@@ -23,38 +24,11 @@ export default {
   component: PegaExtensionsCaseReference,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return undefined;
-        },
-        getActions: () => {
-          return {
-            ACTION_OPENWORKBYHANDLE: 'openWorkByHandle',
-          };
-        },
-      };
-    },
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsCaseReference>;
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    installPlatformFake();
     const props = {
       ...args,
       getPConnect: () => {

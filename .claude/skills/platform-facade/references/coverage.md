@@ -55,10 +55,10 @@ LangSwitch's page reload). Everything else goes through `createPlatform(getPConn
 
 ## Stories
 
-25 `demo.stories.tsx` files still assign `window.PCore` themselves:
-BarCode, CPQTree, Calendar, CardGallery, CaseLauncher, CaseReference, ChatGenAI,
-CompareTableLayout, DateInput, GanttChart, ImageCarousel, JapaneseInput,
-LangSwitch, MaskedInput, NetworkDiagram, OAuthConnect, OrgBuilder,
-PasswordInput, QRCode, Scheduler, SecureRichText, Shortcuts, SignatureCapture,
-StarRatingInput and Toggle. The fake now supplies every API their components
-call, so each can move to `installPlatformFake` on its own.
+Every `demo.stories.tsx` and `demo.test.tsx` uses `installPlatformFake`, or for a
+component that never reaches the platform, no global at all. None assigns
+`window.PCore` itself (checked 2026-11-21). To confirm:
+
+```bash
+grep -lE '\)\.PCore\s*=|PCore\s*=\s*\{' src/components/*/demo.*.tsx
+```

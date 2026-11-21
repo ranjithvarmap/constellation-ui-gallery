@@ -2,6 +2,7 @@ import type { StoryObj } from '@storybook/react-webpack5';
 import { FieldValueItem, DateTimeDisplay } from '@pega/cosmos-react-core';
 import { Details, DetailsList } from '@pega/cosmos-react-work';
 import { PegaExtensionsCardGallery } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 export default {
   title: 'Widgets/Card Gallery',
@@ -198,157 +199,56 @@ const tasks: any = {
   },
 };
 
-const setPCore = (args: any) => {
-  (window as any).PCore = {
-    getLocaleUtils: () => {
-      return {
-        getLocaleValue: (val: string) => {
-          return val;
-        },
-      };
+const installCardGalleryPlatform = (args: any) => {
+  return installPlatformFake({
+    rows: Array.from(
+      Object.entries(tasks)
+        .splice(0, args.numCards)
+        .map((val: any) => val[1]),
+    ),
+    detailData: { content: { pyStatusWork: 'New' } },
+    /* The detail card each task opens: the facade sets pyID on the view's config. */
+    renderView: (meta: any) => {
+      const id = meta.config.pyID;
+      const highlightedData = [<FieldValueItem key='CaseID' variant='stacked' name='CaseID' value={id} />];
+      return (
+        <Details
+          name={''}
+          highlightedData={highlightedData}
+          collapsible={false}
+          columns={{
+            a: (
+              <DetailsList
+                items={[
+                  {
+                    id: 'Description',
+                    name: 'Description',
+                    value: tasks[id].pyDescription,
+                  },
+                  {
+                    id: 'Assigned To',
+                    name: 'Assigned To',
+                    value: tasks[id].pxCreateOpName,
+                  },
+                  {
+                    id: 'Due date',
+                    name: 'Due date',
+                    value: <DateTimeDisplay variant='date' value={tasks[id].pyDueDate} />,
+                  },
+                ]}
+              />
+            ),
+          }}
+        />
+      );
     },
-    createPConnect: () => ({
-      getPConnect: () => ({
-        createComponent: (meta: any) => {
-          const id = meta.config.pyID;
-          const highlightedData = [<FieldValueItem key='CaseID' variant='stacked' name='CaseID' value={id} />];
-          return (
-            <Details
-              name={''}
-              highlightedData={highlightedData}
-              collapsible={false}
-              columns={{
-                a: (
-                  <DetailsList
-                    items={[
-                      {
-                        id: 'Description',
-                        name: 'Description',
-                        value: tasks[id].pyDescription,
-                      },
-                      {
-                        id: 'Assigned To',
-                        name: 'Assigned To',
-                        value: tasks[id].pxCreateOpName,
-                      },
-                      {
-                        id: 'Due date',
-                        name: 'Due date',
-                        value: <DateTimeDisplay variant='date' value={tasks[id].pyDueDate} />,
-                      },
-                    ]}
-                  />
-                ),
-              }}
-            />
-          );
-        },
-      }),
-    }),
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getViewResources: () => {
-      return {
-        fetchViewResources: () => {
-          return {
-            config: {
-              showLabel: true,
-            },
-          };
-        },
-        updateViewResources: () => {},
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getEvents: () => {
-      return {
-        getCaseEvent: () => {
-          return {
-            ASSIGNMENT_SUBMISSION: 'ASSIGNMENT_SUBMISSION',
-          };
-        },
-      };
-    },
-    getPubSubUtils: () => {
-      return {
-        subscribe: () => {
-          /* nothing */
-        },
-        unsubscribe: () => {
-          /* nothing */
-        },
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return undefined;
-        },
-        getActions: () => {
-          return {
-            ACTION_OPENWORKBYHANDLE: 'openWorkByHandle',
-          };
-        },
-      };
-    },
-    getConstants: () => {
-      return {
-        PUB_SUB_EVENTS: {
-          EVENT_DASHBOARD_FILTER_CHANGE: 'EVENT_DASHBOARD_FILTER_CHANGE',
-          EVENT_DASHBOARD_FILTER_CLEAR_ALL: 'EVENT_DASHBOARD_FILTER_CLEAR_ALL',
-        },
-      };
-    },
-    getDataApiUtils: () => {
-      return {
-        getCaseEditLock: () => {
-          return Promise.resolve({
-            headers: {
-              etag: 'xxx',
-            },
-          });
-        },
-        updateCaseEditFieldsData: () => {
-          return Promise.resolve();
-        },
-        getDataObjectView: () => {
-          return Promise.resolve({
-            data: {
-              data: {
-                content: {
-                  pyStatusWork: 'New',
-                },
-              },
-            },
-          });
-        },
-        getData: () => {
-          return Promise.resolve({
-            data: {
-              data: Array.from(
-                Object.entries(tasks)
-                  .splice(0, args.numCards)
-                  .map((val: any) => val[1]),
-              ),
-            },
-          });
-        },
-      };
-    },
-  };
+  });
 };
 
 type Story = StoryObj<typeof PegaExtensionsCardGallery>;
 export const Default: Story = {
   render: (args) => {
-    setPCore(args);
+    installCardGalleryPlatform(args);
     const props = {
       ...args,
       getPConnect: () => {

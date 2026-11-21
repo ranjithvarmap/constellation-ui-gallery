@@ -22,17 +22,10 @@ export default {
   component: PegaExtensionsBarCode,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    /* Nothing */
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsBarCode>;
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
     const props = {
       ...args,
       getPConnect: () => {

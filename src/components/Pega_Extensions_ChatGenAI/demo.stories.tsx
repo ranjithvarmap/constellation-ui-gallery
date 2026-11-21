@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsChatGenAI } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 export default {
   title: 'Widgets/Chat GenAI',
@@ -48,31 +49,20 @@ async function getRealGenAIResponse(message: Array<string>) {
   return Promise.resolve({ pyMessage: details.output.content });
 }
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync: (dataPageName: string, context: string, parameters: { prompt: string }) => {
-          if (simulateGenAIResponse) {
-            return sleep(2000).then(() => {
-              return Promise.resolve({
-                pyMessage: `Thanks for asking about '${parameters.prompt}' but I don't know the answer`,
-              });
-            });
-          } else {
-            const chats = JSON.parse(parameters.prompt);
-            return getRealGenAIResponse(chats);
-          }
-        },
-      };
-    },
-  };
+/* What the GenAI data page answers: a canned reply after a pause, or a real call. */
+const answer = (parameters: { prompt: string }) => {
+  if (simulateGenAIResponse) {
+    return sleep(2000).then(() => ({
+      pyMessage: `Thanks for asking about '${parameters.prompt}' but I don't know the answer`,
+    }));
+  }
+  return getRealGenAIResponse(JSON.parse(parameters.prompt));
 };
 
 type Story = StoryObj<typeof PegaExtensionsChatGenAI>;
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    installPlatformFake({ readDataPage: (_dataPage, parameters) => answer(parameters) });
     const props = {
       ...args,
       getPConnect: () => {

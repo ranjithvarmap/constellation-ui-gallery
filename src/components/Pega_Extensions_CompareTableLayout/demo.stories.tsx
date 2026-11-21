@@ -1,6 +1,7 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsCompareTableLayout, type TableLayoutProps } from './index';
 import { CurrencyDisplay } from '@pega/cosmos-react-core';
+import { installPlatformFake } from '../shared/platform/fake';
 
 type configInfo = {
   value?: Array<any>;
@@ -397,20 +398,7 @@ type Story = StoryObj<typeof PegaExtensionsCompareTableLayout>;
 const CompareTableDemo = (inputs: TableLayoutProps) => {
   return {
     render: (args: TableLayoutProps) => {
-      (window as any).PCore = {
-        getLocaleUtils: () => {
-          return {
-            getLocaleValue: (val: string) => {
-              return val;
-            },
-          };
-        },
-        getComponentsRegistry: () => {
-          return {
-            getLazyComponent: (f: string) => f,
-          };
-        },
-      };
+      installPlatformFake();
       const selProp = args.selectionProperty === 'Select an object' ? '.prop1' : '';
       const props = {
         template: 'CompareTableLayout',

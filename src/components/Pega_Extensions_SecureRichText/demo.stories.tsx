@@ -59,46 +59,10 @@ export default {
   component: PegaExtensionsSecureRichText,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getActionsSequencer: () => {
-      return {
-        registerBlockingAction: () => {
-          return new Promise((resolve) => {
-            resolve();
-          });
-        },
-      };
-    },
-    getAttachmentUtils: () => {
-      return {
-        uploadAttachment: () => {
-          return new Promise((resolve) => {
-            resolve({
-              ID: 'sample',
-            });
-          });
-        },
-      };
-    },
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsSecureRichText>;
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
     const props = {
       ...args,
 

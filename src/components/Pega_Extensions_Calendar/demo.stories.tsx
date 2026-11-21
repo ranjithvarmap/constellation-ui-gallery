@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsCalendar } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 export default {
   title: 'Widgets/Calendar',
@@ -47,108 +48,57 @@ export default {
   component: PegaExtensionsCalendar,
 };
 
-const setPCore = () => {
+const installCalendarPlatform = () => {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
 
   const toDateString = (date: Date) => date.toISOString().split('T')[0];
 
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getEvents: () => {
-      return {
-        getCaseEvent: () => {
-          return {
-            ASSIGNMENT_SUBMISSION: 'ASSIGNMENT_SUBMISSION',
-          };
-        },
-      };
-    },
-    getPubSubUtils: () => {
-      return {
-        subscribe: () => {
-          /* nothing */
-        },
-        unsubscribe: () => {
-          /* nothing */
-        },
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return undefined;
-        },
-        getActions: () => {
-          return {
-            ACTION_OPENWORKBYHANDLE: 'openWorkByHandle',
-          };
-        },
-      };
-    },
-    getDataApiUtils: () => {
-      return {
-        getData: () => {
-          return Promise.resolve({
-            data: {
-              data: [
-                {
-                  pyStatusWork: 'New',
-                  Category: 'in person',
-                  EndTime: '10:00:00',
-                  pxUpdateDateTime: '2025-07-21T18:45:53.817Z',
-                  StartTime: '08:00:00',
-                  ConferenceAccessLink: null,
-                  pzInsKey: 'OPGO8L-CARINSUR-WORK A-1004',
-                  pxUpdateOpName: 'Marc Doe',
-                  SessionDate: toDateString(today),
-                  pxObjClass: 'OPGO8L-CarInsur-Work-Appointment',
-                  pyID: 'A-1004',
-                  pxCreateDateTime: '2023-07-21T18:45:38.411Z',
-                  pyDescription: null,
-                  pyLabel: 'Appointment',
-                  pxCreateOpName: 'Marc Doe',
-                },
-                {
-                  pyStatusWork: 'New',
-                  Category: 'in person',
-                  EndTime: '14:00:00',
-                  pxUpdateDateTime: '2023-07-21T18:43:40.100Z',
-                  StartTime: '09:00:00',
-                  ConferenceAccessLink: null,
-                  pzInsKey: 'OPGO8L-CARINSUR-WORK A-1003',
-                  pxUpdateOpName: 'Marc Doe',
-                  SessionDate: toDateString(tomorrow),
-                  pxObjClass: 'OPGO8L-CarInsur-Work-Appointment',
-                  pyID: 'A-1003',
-                  pxCreateDateTime: '2023-07-21T18:43:07.895Z',
-                  pyDescription: null,
-                  pyLabel: 'Demo Acme',
-                  pxCreateOpName: 'Marc Doe',
-                },
-              ],
-            },
-          });
-        },
-      };
-    },
-  };
+  return installPlatformFake({
+    rows: [
+      {
+        pyStatusWork: 'New',
+        Category: 'in person',
+        EndTime: '10:00:00',
+        pxUpdateDateTime: '2025-07-21T18:45:53.817Z',
+        StartTime: '08:00:00',
+        ConferenceAccessLink: null,
+        pzInsKey: 'OPGO8L-CARINSUR-WORK A-1004',
+        pxUpdateOpName: 'Marc Doe',
+        SessionDate: toDateString(today),
+        pxObjClass: 'OPGO8L-CarInsur-Work-Appointment',
+        pyID: 'A-1004',
+        pxCreateDateTime: '2023-07-21T18:45:38.411Z',
+        pyDescription: null,
+        pyLabel: 'Appointment',
+        pxCreateOpName: 'Marc Doe',
+      },
+      {
+        pyStatusWork: 'New',
+        Category: 'in person',
+        EndTime: '14:00:00',
+        pxUpdateDateTime: '2023-07-21T18:43:40.100Z',
+        StartTime: '09:00:00',
+        ConferenceAccessLink: null,
+        pzInsKey: 'OPGO8L-CARINSUR-WORK A-1003',
+        pxUpdateOpName: 'Marc Doe',
+        SessionDate: toDateString(tomorrow),
+        pxObjClass: 'OPGO8L-CarInsur-Work-Appointment',
+        pyID: 'A-1003',
+        pxCreateDateTime: '2023-07-21T18:43:07.895Z',
+        pyDescription: null,
+        pyLabel: 'Demo Acme',
+        pxCreateOpName: 'Marc Doe',
+      },
+    ],
+  });
 };
 
 type Story = StoryObj<typeof PegaExtensionsCalendar>;
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    installCalendarPlatform();
     const props = {
       ...args,
       getPConnect: () => {

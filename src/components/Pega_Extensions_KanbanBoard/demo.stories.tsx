@@ -123,7 +123,7 @@ const tasks: any = {
 /* The platform double is shared across the gallery; this story only supplies
    what is specific to a kanban board: the task rows, and how a card's detail
    view should render. */
-const setPCore = () =>
+const installKanbanPlatform = () =>
   installPlatformFake({
     rows: Object.values(tasks),
     /* The alerts are how this story shows an action fired. */
@@ -161,7 +161,7 @@ const setPCore = () =>
 type Story = StoryObj<typeof PegaExtensionsKanbanBoard>;
 export const Default: Story = {
   render: (args) => {
-    const platform = setPCore();
+    const platform = installKanbanPlatform();
     const props = {
       ...args,
       getPConnect: platform.getPConnect,

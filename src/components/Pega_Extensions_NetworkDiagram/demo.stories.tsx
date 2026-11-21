@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsNetworkDiagram, type NetworkDiagramProps } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 export default {
   title: 'Widgets/Network Diagram',
@@ -41,7 +42,7 @@ export default {
   component: PegaExtensionsNetworkDiagram,
 };
 
-const setPCore = (Example: string) => {
+const installNetworkPlatform = (Example: string) => {
   let data = {};
   if (Example === 'basic') {
     data = {
@@ -752,56 +753,7 @@ const setPCore = (Example: string) => {
       ],
     };
   }
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getEvents: () => {
-      return {
-        getCaseEvent: () => {
-          return {
-            ASSIGNMENT_SUBMISSION: 'ASSIGNMENT_SUBMISSION',
-          };
-        },
-      };
-    },
-    getPubSubUtils: () => {
-      return {
-        subscribe: () => {
-          /* nothing */
-        },
-        unsubscribe: () => {
-          /* nothing */
-        },
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return window.location.href;
-        },
-        getActions: () => {
-          return {
-            ACTION_OPENWORKBYHANDLE: 'openWorkByHandle',
-          };
-        },
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync: () => {
-          return Promise.resolve(data);
-        },
-      };
-    },
-  };
+  return installPlatformFake({ readDataPage: () => data });
 };
 
 interface NetworkDiagramPropsExt extends NetworkDiagramProps {
@@ -811,7 +763,7 @@ interface NetworkDiagramPropsExt extends NetworkDiagramProps {
 type Story = StoryObj<NetworkDiagramPropsExt>;
 export const Default: Story = {
   render: (args: NetworkDiagramPropsExt) => {
-    setPCore(args.Example);
+    installNetworkPlatform(args.Example);
     const props = {
       ...args,
       getPConnect: () => {
