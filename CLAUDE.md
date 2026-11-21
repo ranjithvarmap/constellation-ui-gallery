@@ -16,6 +16,9 @@ the `pega-dx-contract` skill. The summary below is the rules, not the detail.
 - `src/components/shared/create-nonce.ts` — CSP nonce shim every `index.tsx` imports.
 - `tools/generator/` — spec-driven generator for all three types (`defineField`,
   `defineTemplate`, `defineWidget`).
+  `tools/generator/blocks.ts` (`p.label()`, `p.conditions()`, `p.advanced()`,
+  `p.about()`) defines the panel blocks every `config.json` repeats; a test holds
+  all 55 existing files to them, so copy a block from there, never edit one by hand.
 - `tools/config-parity/` — checks every `config.json` property is read by the component.
 - `tools/snapshot/` — `npm run snapshot -- <Name>` photographs a component's stories
   (Playwright Chromium) to `.snapshots/`, to compare with a mockup.
