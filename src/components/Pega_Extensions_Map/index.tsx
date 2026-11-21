@@ -270,12 +270,11 @@ export const PegaExtensionsMap = (props: MapProps) => {
 
     // In 24.2, we need to initialize the context tree manager
     if (displayMode !== 'DISPLAY_ONLY') {
-      (window as any).PCore.getContextTreeManager().addPageListNode(
-        getPConnect().getContextName(),
-        'caseInfo.content',
-        getPConnect().meta.name,
-        'Locations',
-      );
+      createPlatform(getPConnect).contextTree.registerPageList({
+        pageReference: 'caseInfo.content',
+        viewName: getPConnect().meta.name,
+        pageListName: 'Locations',
+      });
     }
 
     // Retrieve the name of the embedded object when bFreeFormDrawing is false
@@ -517,16 +516,7 @@ export const PegaExtensionsMap = (props: MapProps) => {
   }, [initComponent]);
 
   if (!scriptsLoaded) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   return (

@@ -81,8 +81,8 @@ export const PegaExtensionsMeter = (props: MeterProps) => {
       const payload = {
         dataViewParameters: [{ pyID: CaseInstanceKey }],
       };
-      (window as any).PCore.getDataApiUtils()
-        .getData(dataPage, payload, pConn.getContextName())
+      createPlatform(() => pConn)
+        .caseData.query(dataPage, payload)
         .then((response: any) => {
           if (response.data.data !== null) {
             let tmpTotalValue = totalTasks;

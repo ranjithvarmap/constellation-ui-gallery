@@ -71,8 +71,8 @@ export const PegaExtensionsTaskList = (props: PegaExtensionsTaskListProps) => {
       const payload = {
         dataViewParameters: [{ pyID: CaseInstanceKey }],
       };
-      (window as any).PCore.getDataApiUtils()
-        .getData(dataPage, payload, pConn.getContextName())
+      createPlatform(() => pConn)
+        .caseData.query(dataPage, payload)
         .then((response: any) => {
           if (response.data.data !== null) {
             setIsLoading(false);
@@ -94,16 +94,7 @@ export const PegaExtensionsTaskList = (props: PegaExtensionsTaskListProps) => {
     return <Banner variant='urgent' messages={[error]} />;
   }
   if (isLoading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
   return (
     <Card>

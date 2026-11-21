@@ -2,6 +2,7 @@ import { type MouseEvent, useCallback } from 'react';
 import { withConfiguration, Card, CardHeader, CardContent, Text, Link, Flex } from '@pega/cosmos-react-core';
 import { SimpleContent, GroupedContent } from './styles';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type ShortcutsProps = {
   /** Display type of rendering
@@ -23,7 +24,6 @@ type ShortcutsProps = {
 
 export const PegaExtensionsShortcuts = (props: ShortcutsProps) => {
   const { heading = 'Shortcuts', displayType = 'simple', names = '', pages = '', pageJSON = '', getPConnect } = props;
-  const { ACTION_SHOWVIEW } = (window as any).PCore.getSemanticUrlUtils().getActions();
 
   const generateLink = useCallback(
     (name: string, page: string) => {
@@ -41,11 +41,7 @@ export const PegaExtensionsShortcuts = (props: ShortcutsProps) => {
 
       const pageClass = page.substring(0, delimiter).trim();
       const pageName = page.substring(delimiter + 1).trim();
-      const linkRef = (window as any).PCore.getSemanticUrlUtils().getResolvedSemanticURL(
-        ACTION_SHOWVIEW,
-        { page: pageName },
-        '',
-      );
+      const linkRef = createPlatform(getPConnect).links.pageUrl(pageName);
       return (
         <Link
           key={name}
@@ -62,7 +58,7 @@ export const PegaExtensionsShortcuts = (props: ShortcutsProps) => {
         </Link>
       );
     },
-    [ACTION_SHOWVIEW, getPConnect],
+    [getPConnect],
   );
 
   if (displayType === 'simple') {

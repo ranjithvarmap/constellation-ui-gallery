@@ -181,12 +181,11 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
 
     /* In 24.2, we need to initialize the context tree manager. Registered only
        once the list's name is known: before, this ran first and registered ''. */
-    (window as any).PCore.getContextTreeManager().addPageListNode(
-      getPConnect().getContextName(),
-      'caseInfo.content',
-      getPConnect().meta.name,
-      productRef.current,
-    );
+    createPlatform(getPConnect).contextTree.registerPageList({
+      pageReference: 'caseInfo.content',
+      viewName: getPConnect().meta.name,
+      pageListName: productRef.current,
+    });
     productSelectionRequiredRef.current = false;
     if (SelectedProducts[0]?.inheritedProps?.length > 0) {
       for (const val of SelectedProducts[0].inheritedProps) {
@@ -251,14 +250,7 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
     return (
       <Flex container={{ pad: 2 }} height={10}>
         <Flex item={{ grow: 1, alignSelf: 'auto' }}>
-          <Progress
-            placement='block'
-            message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-              'Loading content...',
-              'Generic',
-              '@BASECLASS!GENERIC!PYGENERICFIELDS',
-            )}
-          />
+          <Progress placement='block' message={createPlatform(getPConnect).text.loadingContent()} />
         </Flex>
       </Flex>
     );

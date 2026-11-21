@@ -66,7 +66,7 @@ export const PegaExtensionsUtilityList = (props: UtilityListProps) => {
   const caseID = createPlatform(getPConnect).caseInfo.key();
 
   const publishUtilityUpdated = (count: any) => {
-    (window as any).PCore.getPubSubUtils().publish('WidgetUpdated', {
+    createPlatform(getPConnect).events.emit('widgetUpdated', {
       widget: 'PEGA_EXTENSIONS_UTILITYLIST',
       count,
       caseID,
@@ -115,8 +115,8 @@ export const PegaExtensionsUtilityList = (props: UtilityListProps) => {
       const payload = {
         dataViewParameters: [{ CaseInstanceKey }],
       };
-      (window as any).PCore.getDataApiUtils()
-        .getData(dataPage, setCaseID ? payload : {}, pConn.getContextName())
+      createPlatform(() => pConn)
+        .caseData.query(dataPage, setCaseID ? payload : {})
         .then((response: any) => {
           if (response.data.data !== null) {
             loadObjects(response.data.data);

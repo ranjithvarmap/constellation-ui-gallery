@@ -72,12 +72,11 @@ export const PegaExtensionsJawLayout = (props: JawLayoutProps) => {
         // Use dynamic page reference for hierarchical form support
         const stateProps = getPConnect().getStateProps();
         const basePageRef = stateProps?.pageReference || getPConnect().getPageReference() || 'caseInfo.content';
-        (window as any).PCore.getContextTreeManager().addPageListNode(
-          getPConnect().getContextName(),
-          basePageRef,
-          getPConnect().meta.name,
-          pageRef,
-        );
+        createPlatform(getPConnect).contextTree.registerPageList({
+          pageReference: basePageRef,
+          viewName: getPConnect().meta.name,
+          pageListName: pageRef,
+        });
       } catch {
         /* Silently fail if already registered */
       }

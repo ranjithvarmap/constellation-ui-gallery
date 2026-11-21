@@ -11,16 +11,13 @@ export default function ActionButtons({ getPConnect }: ActionButtonsProps) {
   const actionsAPI = getPConnect().getActionsApi();
   const context = getPConnect().getContextName();
 
-  const localizedVal = (window as any).PCore.getLocaleUtils().getLocaleValue;
+  const localizedVal = createPlatform(getPConnect).text.locale;
   const localeCategory = 'Assignment';
 
   function onSaveActionSuccess(data: any) {
     // skip publishing EVENT_CANCEL for save for later use-cases.
     actionsAPI.cancelAssignment(context, true).then(() => {
-      (window as any).PCore.getPubSubUtils().publish(
-        (window as any).PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.CREATE_STAGE_SAVED,
-        data,
-      );
+      createPlatform(getPConnect).events.emit('createStageSaved', data);
     });
   }
 

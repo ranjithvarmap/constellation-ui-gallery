@@ -249,7 +249,7 @@ export interface LinksApi {
    * `caseUrl` adds: the link Calendar, CPQTree, NetworkDiagram, Scheduler and
    * UtilityList have always built. The two produce different URLs.
    */
-  workUrl(options: { className: string; workId: string }): string;
+  workUrl(options: { className: string | undefined; workId: string | undefined }): string;
 
   /** Build a link that shows a portal page (a landing page) by name. */
   pageUrl(pageName: string): string;
@@ -304,8 +304,8 @@ export interface ContextTreeApi {
 }
 
 export interface TextApi {
-  /** Translate a value from a locale bundle. */
-  locale(value: string, bundle: string, path: string): string;
+  /** Translate a value from a locale bundle; `path` narrows the lookup and is sent only when given. */
+  locale(value: string, bundle: string, path?: string): string;
   /**
    * The platform's standard "Loading content..." string.
    *

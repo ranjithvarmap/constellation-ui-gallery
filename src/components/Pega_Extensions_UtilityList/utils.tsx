@@ -1,5 +1,6 @@
 import { type MouseEvent } from 'react';
 import { Link, DateTimeDisplay } from '@pega/cosmos-react-core';
+import { createPlatform } from '../shared/platform';
 
 export type ObjectProps = {
   propName: string;
@@ -12,11 +13,7 @@ export const renderObjectField = ({ propName, type, item, getPConnect }: ObjectP
   const value = item[propName];
   if (!value) return undefined;
   if (propName === 'pyID' && item.pyID && item.pyLabel && item.pxObjClass && item.pzInsKey) {
-    const linkURL = (window as any).PCore.getSemanticUrlUtils().getResolvedSemanticURL(
-      (window as any).PCore.getSemanticUrlUtils().getActions().ACTION_OPENWORKBYHANDLE,
-      { caseClassName: item.pxObjClass },
-      { workID: item.pyID },
-    );
+    const linkURL = createPlatform(getPConnect).links.workUrl({ className: item.pxObjClass, workId: item.pyID });
     return linkURL ? (
       <Link
         href={linkURL}

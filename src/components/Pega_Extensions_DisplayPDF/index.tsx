@@ -110,8 +110,8 @@ export const PegaExtensionsDisplayPDF = (props: DisplayPDFProps) => {
       const payload = {
         dataViewParameters: [{ caseInstanceKey: CaseInstanceKey }],
       };
-      (window as any).PCore.getDataApiUtils()
-        .getData(dataPage, payload, pConn.getContextName())
+      createPlatform(() => pConn)
+        .caseData.query(dataPage, payload)
         .then((response: any) => {
           if (response.data.data !== null) {
             setPdfFiles(response.data.data);
@@ -164,16 +164,7 @@ export const PegaExtensionsDisplayPDF = (props: DisplayPDFProps) => {
   }
 
   if (loading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   return (

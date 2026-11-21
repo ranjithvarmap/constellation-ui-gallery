@@ -20,6 +20,7 @@ import * as caretRightIcon from '@pega/cosmos-react-core/lib/components/Icon/ico
 import * as informationIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/information.icon';
 import * as listIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/list.icon';
 import * as timesIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/times.icon';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(caretRightIcon, informationIcon, listIcon, timesIcon);
 
@@ -128,16 +129,7 @@ export const PegaExtensionsCPQTree = (props: CPQTreeProps) => {
 
   if (loading) {
     return (
-      <Progress
-        placement='local'
-        message={
-          (window as any).PCore?.getLocaleUtils()?.getLocaleValue(
-            'Loading content...',
-            'Generic',
-            '@BASECLASS!GENERIC!PYGENERICFIELDS',
-          ) || 'Loading content...'
-        }
-      />
+      <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent() || 'Loading content...'} />
     );
   }
 

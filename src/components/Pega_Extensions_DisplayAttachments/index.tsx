@@ -131,7 +131,7 @@ export const PegaExtensionsDisplayAttachments = (props: UtilityListProps) => {
 
   const publishAttachmentsUpdated = useCallback(
     (count: any) => {
-      (window as any).PCore.getPubSubUtils().publish('WidgetUpdated', {
+      createPlatform(getPConnect).events.emit('widgetUpdated', {
         widget: 'PEGA_EXTENSIONS_DISPLAYATTACHMENTS',
         count,
         caseID,
@@ -215,8 +215,8 @@ export const PegaExtensionsDisplayAttachments = (props: UtilityListProps) => {
       const payload = {
         dataViewParameters: [{ LinkRefFrom: CaseInstanceKey }],
       };
-      (window as any).PCore.getDataApiUtils()
-        .getData(dataPage, payload, pConn.getContextName())
+      createPlatform(() => pConn)
+        .caseData.query(dataPage, payload)
         .then((response: any) => {
           if (response.data.data !== null) {
             loadAttachments(response.data.data);

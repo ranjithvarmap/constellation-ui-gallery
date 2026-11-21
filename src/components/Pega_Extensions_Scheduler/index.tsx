@@ -5,6 +5,7 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import { StyledCardContent, MainCard, GlobalStyle } from './styles';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 export type PegaExtensionsSchedulerProps = {
   getPConnect: any;
@@ -56,11 +57,7 @@ export const PegaExtensionsScheduler = (props: PegaExtensionsSchedulerProps) => 
 
   const renderEventContent = (eventInfo: EventContentArg) => {
     const obj = eventInfo.event._def.extendedProps.item;
-    const linkURL = (window as any).PCore.getSemanticUrlUtils().getResolvedSemanticURL(
-      (window as any).PCore.getSemanticUrlUtils().getActions().ACTION_OPENWORKBYHANDLE,
-      { caseClassName: obj.ObjClass },
-      { workID: obj.ID },
-    );
+    const linkURL = createPlatform(getPConnect).links.workUrl({ className: obj.ObjClass, workId: obj.ID });
     if (obj.Name) {
       const description = `Event ${eventInfo.event.title} for ${obj.Name} from ${convertTime(obj.StartTime)} to from ${convertTime(obj.EndTime)}`;
       return (

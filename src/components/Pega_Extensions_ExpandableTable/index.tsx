@@ -68,16 +68,7 @@ const RowDetailPanel = ({ rowIndex, detailViewName, embedDataRef, embedClass, ge
   }
 
   if (!detailContent) {
-    return (
-      <Progress
-        placement='inline'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='inline' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   return detailContent;
@@ -148,27 +139,17 @@ export const PegaExtensionsExpandableTable = (props: ExpandableTableProps) => {
       const { parentPath, listProperty } = getPageListRegistration(currentBasePageRef, listRef);
 
       /* New API added in 24.2 */
-      (window as any).PCore.getContextTreeManager().addPageListNode(
-        getPConnect().getContextName(),
-        parentPath,
-        getPConnect().meta.name,
-        listProperty,
-      );
+      createPlatform(getPConnect).contextTree.registerPageList({
+        pageReference: parentPath,
+        viewName: getPConnect().meta.name,
+        pageListName: listProperty,
+      });
 
       setNumRows(columnFields[0].value.length);
       columnFields.forEach((child: any) => {
-        if (
-          child.componentType &&
-          !(window as any).PCore.getComponentsRegistry().getLazyComponent(child.componentType)
-        ) {
-          (window as any).PCore.getAssetLoader()
-            .getLoader('component-loader')([child.componentType])
-            .then(() => {
-              setNumFields((prevCount) => prevCount + 1);
-            });
-        } else {
+        createPlatform(getPConnect).components.whenAvailable(child.componentType, () => {
           setNumFields((prevCount) => prevCount + 1);
-        }
+        });
       });
       setFields(columnFields);
     }
@@ -182,16 +163,7 @@ export const PegaExtensionsExpandableTable = (props: ExpandableTableProps) => {
   }, [numFields, fields]);
 
   if (loading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   const colSpan = fields.length + 1;

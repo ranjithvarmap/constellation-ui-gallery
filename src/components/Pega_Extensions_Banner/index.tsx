@@ -113,8 +113,8 @@ export const PegaExtensionsBanner = (props: BannerProps) => {
         const payload = {
           dataViewParameters: [{ pyID: CaseInstanceKey, ...(dismissed ? { dismissed: true } : null) }],
         };
-        (window as any).PCore.getDataApiUtils()
-          .getData(dataPage, payload, pConn.getContextName())
+        createPlatform(() => pConn)
+          .caseData.query(dataPage, payload)
           .then((response: any) => {
             if (response.data.data !== null) {
               setMessages(response.data.data.map((message: any) => message.pyDescription));

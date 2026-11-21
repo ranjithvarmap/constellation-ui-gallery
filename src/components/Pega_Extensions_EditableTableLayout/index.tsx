@@ -104,28 +104,18 @@ export const PegaExtensionsEditableTableLayout = (props: TableLayoutProps) => {
       setEmbedDataRef(tmpFields[0].pageref);
 
       /* New API added in 24.2 - not needed for 24.1 */
-      (window as any).PCore.getContextTreeManager().addPageListNode(
-        getPConnect().getContextName(),
-        'caseInfo.content',
-        getPConnect().meta.name,
-        tmpFields[0].pageref,
-      );
+      createPlatform(getPConnect).contextTree.registerPageList({
+        pageReference: 'caseInfo.content',
+        viewName: getPConnect().meta.name,
+        pageListName: tmpFields[0].pageref,
+      });
 
       setNumRows(tmpFields[0].value.length);
       /* This logic will load the DX Component if it is not already loaded */
       tmpFields.forEach((child: any) => {
-        if (
-          child.componentType &&
-          !(window as any).PCore.getComponentsRegistry().getLazyComponent(child.componentType)
-        ) {
-          (window as any).PCore.getAssetLoader()
-            .getLoader('component-loader')([child.componentType])
-            .then(() => {
-              if (active) setNumFields((prevCount) => prevCount + 1);
-            });
-        } else {
-          setNumFields((prevCount) => prevCount + 1);
-        }
+        createPlatform(getPConnect).components.whenAvailable(child.componentType, () => {
+          if (active) setNumFields((prevCount) => prevCount + 1);
+        });
       });
       setFields(tmpFields);
     }
@@ -143,16 +133,7 @@ export const PegaExtensionsEditableTableLayout = (props: TableLayoutProps) => {
   }, [numFields, fields]);
 
   if (loading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   return (

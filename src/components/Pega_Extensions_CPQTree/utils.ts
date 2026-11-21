@@ -3,6 +3,7 @@
  */
 
 import { TREE_CONSTANTS, PROPERTY_NAMES, NODE_TYPES } from './constants';
+import { links } from '../shared/platform';
 
 /**
  * Creates a regex from a pattern (handles both string and RegExp)
@@ -172,11 +173,7 @@ export const generateLinkURL = (nodeClass: string, workId: string, caseInstanceK
     return '';
   }
 
-  return (window as any).PCore.getSemanticUrlUtils().getResolvedSemanticURL(
-    (window as any).PCore.getSemanticUrlUtils().getActions().ACTION_OPENWORKBYHANDLE,
-    { caseClassName: nodeClass },
-    { workID: workId },
-  );
+  return links.workUrl({ className: nodeClass, workId: workId });
 };
 
 /**

@@ -53,16 +53,17 @@ const pcore = (): any => (window as any).PCore;
 
 /** Maps our event names onto the platform's event constants. */
 const eventConstant = (event: PlatformEvent): string => {
-  const pubSubEvents = pcore().getConstants().PUB_SUB_EVENTS;
+  /* Read only by the events that need it: a case event needs no constants. */
+  const pubSubEvents = () => pcore().getConstants().PUB_SUB_EVENTS;
   switch (event) {
     case 'assignmentSubmission':
       return pcore().getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION;
     case 'createStageSaved':
-      return pubSubEvents.CASE_EVENTS.CREATE_STAGE_SAVED;
+      return pubSubEvents().CASE_EVENTS.CREATE_STAGE_SAVED;
     case 'dashboardFilterChange':
-      return pubSubEvents.EVENT_DASHBOARD_FILTER_CHANGE;
+      return pubSubEvents().EVENT_DASHBOARD_FILTER_CHANGE;
     case 'dashboardFilterClearAll':
-      return pubSubEvents.EVENT_DASHBOARD_FILTER_CLEAR_ALL;
+      return pubSubEvents().EVENT_DASHBOARD_FILTER_CLEAR_ALL;
     /* The gallery's own event: no platform constant names it. */
     case 'widgetUpdated':
       return 'WidgetUpdated';
@@ -264,7 +265,10 @@ const GENERIC_BUNDLE = 'Generic';
 const GENERIC_PATH = '@BASECLASS!GENERIC!PYGENERICFIELDS';
 
 const createText = (): TextApi => ({
-  locale: (value: string, bundle: string, path: string) => pcore().getLocaleUtils().getLocaleValue(value, bundle, path),
+  locale: (value: string, bundle: string, path?: string) =>
+    path === undefined
+      ? pcore().getLocaleUtils().getLocaleValue(value, bundle)
+      : pcore().getLocaleUtils().getLocaleValue(value, bundle, path),
   loadingContent: () => pcore().getLocaleUtils().getLocaleValue('Loading content...', GENERIC_BUNDLE, GENERIC_PATH),
 });
 
@@ -280,7 +284,7 @@ const createLinks = (): LinksApi => ({
     );
   },
 
-  workUrl: ({ className, workId }: { className: string; workId: string }) => {
+  workUrl: ({ className, workId }: { className: string | undefined; workId: string | undefined }) => {
     const semanticUrlUtils = pcore().getSemanticUrlUtils();
     return semanticUrlUtils.getResolvedSemanticURL(
       semanticUrlUtils.getActions().ACTION_OPENWORKBYHANDLE,
@@ -401,6 +405,9 @@ const createContainers = (getPConnect: GetPConnect, context: () => string): Cont
   currentItem: () => pcore().getContainerUtils().getContainerItemData(getPConnect().getTarget(), context()),
 });
 
+/** Links need no PConnect either: exported for helpers that build one without a component. */
+export const links: LinksApi = createLinks();
+
 /**
  * The operator's session, which needs no PConnect: exported on its own for
  * code that runs outside a component, such as LangSwitch's page reload.
@@ -470,7 +477,7 @@ export const createPlatform = (getPConnect: GetPConnect): Platform => {
     text: createText(),
     views: createViews(getPConnect, caseData),
     events: createEvents(),
-    links: createLinks(),
+    links,
     caseActions: createCaseActions(getPConnect),
     contextTree: createContextTree(context),
     dataPages: createDataPages(context),
