@@ -59,19 +59,6 @@
             "allowCreatingGroup": true
         },
         {
-            "label": "Advanced",
-            "format": "GROUP",
-            "collapsible": true,
-            "defaultCollapsed": true,
-            "properties": [
-                {
-                    "name": "inheritParentLayout",
-                    "label": "Embedded Views inherit parent View's column layout",
-                    "format": "BOOLEAN"
-                }
-            ]
-        },
-        {
             "format": "LABEL",
             "label": "About",
             "name": "PegaAboutLabel",

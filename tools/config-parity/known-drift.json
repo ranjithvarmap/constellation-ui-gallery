@@ -6,18 +6,12 @@
     "fails on NEW drift.",
     "",
     "This list must only shrink. Fixing a component means either wiring the",
-    "prop up or deleting it from config.json, then removing its entry here \u2014",
+    "prop up or deleting it from config.json, then removing its entry here —",
     "the 'no stale entries' test enforces that.",
     "",
     "Worked example: OAuthConnect.iconName offers 'node' and 'chain', and the",
     "component imports and registers both icons, but never reads iconName to",
     "choose between them."
   ],
-  "drift": [
-    "CaseReference.label",
-    "FormWithVerticalStepper.inheritParentLayout",
-    "ImageMagnify.label",
-    "ImageMagnify.testId",
-    "StatusBadge.label"
-  ]
+  "drift": []
 }

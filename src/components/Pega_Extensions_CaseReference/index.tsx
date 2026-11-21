@@ -1,9 +1,13 @@
 import { type MouseEvent } from 'react';
-import { withConfiguration, Link } from '@pega/cosmos-react-core';
+import { withConfiguration, FormField, Link } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
 import { createPlatform } from '../shared/platform';
 
-type ActionableButtonProps = {
+type CaseReferenceProps = {
+  /** Field label, shown above the link in a form. Details views draw it themselves (detailFVLItem). */
+  label?: string;
+  /** Set by the platform; DISPLAY_ONLY means a details view is drawing the label. */
+  displayMode?: 'DISPLAY_ONLY' | '';
   value: string;
   selectionProperty: string;
   getPConnect: any;
@@ -11,8 +15,8 @@ type ActionableButtonProps = {
   allowPreview: boolean;
 };
 
-export const PegaExtensionsCaseReference = (props: ActionableButtonProps) => {
-  const { getPConnect, selectionProperty, value, refCaseClassName, allowPreview } = props;
+export const PegaExtensionsCaseReference = (props: CaseReferenceProps) => {
+  const { getPConnect, selectionProperty, value, refCaseClassName, allowPreview, label, displayMode } = props;
 
   if (value && typeof selectionProperty === 'string' && selectionProperty.includes(' ')) {
     const caseID = selectionProperty.split(' ')[1];
@@ -24,7 +28,7 @@ export const PegaExtensionsCaseReference = (props: ActionableButtonProps) => {
       workId: caseID,
     });
 
-    return (
+    const link = (
       <Link
         href={linkURL}
         previewable={allowPreview}
@@ -41,6 +45,13 @@ export const PegaExtensionsCaseReference = (props: ActionableButtonProps) => {
       >
         {value}
       </Link>
+    );
+    if (displayMode === 'DISPLAY_ONLY' || !label) return link;
+
+    return (
+      <FormField label={label} labelAs='span'>
+        {link}
+      </FormField>
     );
   }
   return null;
