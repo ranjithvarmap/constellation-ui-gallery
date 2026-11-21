@@ -52,14 +52,18 @@ test("keys the list by the case's handle when asked to", async () => {
   const calls = await renderList(true);
 
   expect(calls.queries).toEqual([
-    { dataView: 'D_Appointments', options: { dataViewParameters: [{ CaseInstanceKey: CASE_KEY }] } },
+    {
+      dataView: 'D_Appointments',
+      options: { dataViewParameters: [{ CaseInstanceKey: CASE_KEY }] },
+      context: 'app/primary_1',
+    },
   ]);
 });
 
 test('reads the list without the case otherwise', async () => {
   const calls = await renderList(false);
 
-  expect(calls.queries).toEqual([{ dataView: 'D_Appointments', options: {} }]);
+  expect(calls.queries).toEqual([{ dataView: 'D_Appointments', options: {}, context: 'app/primary_1' }]);
 });
 
 /* Other widgets on the case listen for this to show the list's size. */

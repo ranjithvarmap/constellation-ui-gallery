@@ -46,7 +46,7 @@ test("shows the case's messages, read keyed by the case's handle", async () => {
   const { calls } = await renderBanner();
 
   expect(calls.queries).toEqual([
-    { dataView: 'D_CaseMessages', options: { dataViewParameters: [{ pyID: CASE_KEY }] } },
+    { dataView: 'D_CaseMessages', options: { dataViewParameters: [{ pyID: CASE_KEY }] }, context: 'app/primary_1' },
   ]);
   expect(screen.getByText('Supporting documents are missing')).toBeVisible();
 });
@@ -76,6 +76,7 @@ test('dismissing without an action marks the messages dismissed, then refreshes 
   expect(calls.queries[1]).toEqual({
     dataView: 'D_CaseMessages',
     options: { dataViewParameters: [{ pyID: CASE_KEY, dismissed: true }] },
+    context: 'app/primary_1',
   });
   expect(calls.restCalls.map(({ endpoint, payload }) => ({ endpoint, payload }))).toEqual([summaryLoad]);
   expect(calls.stateUpdates).toEqual([{ caseInfo: { ID: CASE_KEY, status: 'Open-Reviewed' } }]);

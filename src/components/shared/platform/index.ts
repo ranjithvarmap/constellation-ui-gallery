@@ -6,6 +6,19 @@
  * `(window as any).PCore`. Everything else goes through {@link Platform}.
  */
 import type {
+  AttachmentsApi,
+  ComponentsApi,
+  ContainersApi,
+  DataPageReadOptions,
+  DataPagesApi,
+  EnvironmentApi,
+  FieldsApi,
+  FormsApi,
+  MessagingApi,
+  RegisterViewOptions,
+  RenderDetailViewOptions,
+  StoreApi,
+  UploadOptions,
   CaseActionsApi,
   CaseDataApi,
   CaseInfoApi,
@@ -50,6 +63,9 @@ const eventConstant = (event: PlatformEvent): string => {
       return pubSubEvents.EVENT_DASHBOARD_FILTER_CHANGE;
     case 'dashboardFilterClearAll':
       return pubSubEvents.EVENT_DASHBOARD_FILTER_CLEAR_ALL;
+    /* The gallery's own event: no platform constant names it. */
+    case 'widgetUpdated':
+      return 'WidgetUpdated';
     /* istanbul ignore next - exhaustive over the union */
     default:
       throw new Error(`Unknown platform event: ${event}`);
@@ -59,6 +75,14 @@ const eventConstant = (event: PlatformEvent): string => {
 const createCaseData = (getPConnect: GetPConnect, context: () => string): CaseDataApi => ({
   query: (dataView: string, options: QueryOptions = {}) =>
     pcore().getDataApiUtils().getData(dataView, options, context()),
+
+  /* Two arguments, never a third: see the JSDoc on CaseDataApi. */
+  queryUnscoped: (dataView: string, options: QueryOptions = {}) => pcore().getDataApiUtils().getData(dataView, options),
+
+  refreshEtag: async (caseKey: string) => {
+    const lock = await pcore().getDataApiUtils().getCaseEditLock(caseKey, context());
+    pcore().getContainerUtils().updateCaseContextEtag(context(), lock.headers.etag);
+  },
 
   updateFields: async (caseKey: string, fields: Record<string, unknown>) => {
     const lock = await pcore().getDataApiUtils().getCaseEditLock(caseKey, context());
@@ -103,13 +127,11 @@ const createDataObjects = (): DataObjectsApi => ({
       .invokeRestApi('updateDataObject', { queryPayload: { data_view_ID: dataPage }, body: { data } }),
 });
 
-const createViews = (getPConnect: GetPConnect, caseData: CaseDataApi): ViewsApi => ({
-  loadDetailView: async ({ dataPage, viewName, id, className, params, configOverrides }: LoadDetailViewOptions) => {
-    const response = await caseData.fetchDetailView(dataPage, viewName, params ?? { pyID: id });
+const createViews = (getPConnect: GetPConnect, caseData: CaseDataApi): ViewsApi => {
+  const metadata = (viewName: string, className: string) =>
+    pcore().getViewResources().fetchViewResources(viewName, getPConnect(), className);
 
-    const { fetchViewResources, updateViewResources } = pcore().getViewResources();
-    await updateViewResources(response.data);
-
+  const renderDetailView = ({ viewName, id, className, data, configOverrides }: RenderDetailViewOptions) => {
     /* Host the view in a transient container item so it resolves a context of
        its own — it is not backed by an assignment. */
     const containerManager = getPConnect().getContainerManager();
@@ -117,13 +139,10 @@ const createViews = (getPConnect: GetPConnect, caseData: CaseDataApi): ViewsApi 
       id: `${viewName}${id}`,
       data: {},
     });
-    containerManager.updateTransientData({
-      transientItemID,
-      data: response.data.data.dataInfo,
-    });
+    containerManager.updateTransientData({ transientItemID, data });
 
     const viewConfig = {
-      meta: fetchViewResources(viewName, getPConnect(), className),
+      meta: metadata(viewName, className),
       options: {
         contextName: transientItemID,
         context: transientItemID,
@@ -134,8 +153,23 @@ const createViews = (getPConnect: GetPConnect, caseData: CaseDataApi): ViewsApi 
 
     const c11nEnv = pcore().createPConnect(viewConfig);
     return c11nEnv.getPConnect().createComponent(viewConfig.meta);
-  },
-});
+  };
+
+  const addResources = async (responseData: unknown) => {
+    await pcore().getViewResources().updateViewResources(responseData);
+  };
+
+  return {
+    metadata,
+    renderDetailView,
+    addResources,
+    loadDetailView: async ({ dataPage, viewName, id, className, params, configOverrides }: LoadDetailViewOptions) => {
+      const response = await caseData.fetchDetailView(dataPage, viewName, params ?? { pyID: id });
+      await addResources(response.data);
+      return renderDetailView({ viewName, id, className, data: response.data.data.dataInfo, configOverrides });
+    },
+  };
+};
 
 const createEvents = (): EventsApi => ({
   on: <TPayload>(
@@ -165,6 +199,10 @@ const createEvents = (): EventsApi => ({
         pcore().getPubSubUtils().unsubscribe(eventName, subscriptionId);
       }
     };
+  },
+
+  emit: (event: PlatformEvent, payload: unknown) => {
+    pcore().getPubSubUtils().publish(eventConstant(event), payload);
   },
 });
 
@@ -241,6 +279,24 @@ const createLinks = (): LinksApi => ({
       { caseID: caseKey },
     );
   },
+
+  workUrl: ({ className, workId }: { className: string; workId: string }) => {
+    const semanticUrlUtils = pcore().getSemanticUrlUtils();
+    return semanticUrlUtils.getResolvedSemanticURL(
+      semanticUrlUtils.getActions().ACTION_OPENWORKBYHANDLE,
+      { caseClassName: className },
+      { workID: workId },
+    );
+  },
+
+  pageUrl: (pageName: string) => {
+    const semanticUrlUtils = pcore().getSemanticUrlUtils();
+    return semanticUrlUtils.getResolvedSemanticURL(
+      semanticUrlUtils.getActions().ACTION_SHOWVIEW,
+      { page: pageName },
+      '',
+    );
+  },
 });
 
 const createCaseActions = (getPConnect: GetPConnect): CaseActionsApi => ({
@@ -262,12 +318,127 @@ const createContextTree = (context: () => string): ContextTreeApi => {
     /* The platform's order is (contextName, pageName, viewName, pageListName).
        It was once called here as (context, page, list, className, view), which
        registered nothing usable; the test pins the order to Pega's example. */
-    registerPageList: ({ pageReference, viewName, pageListName }: RegisterPageListOptions) => {
+    registerPageList: ({ pageReference, viewName, pageListName, node }: RegisterPageListOptions) => {
       if (!available) return;
-      pcore().getContextTreeManager().addPageListNode(context(), pageReference, viewName, pageListName);
+      const args: unknown[] = [context(), pageReference, viewName, pageListName];
+      /* The node description goes only when given, as a fifth argument. */
+      if (node !== undefined) args.push(node);
+      pcore()
+        .getContextTreeManager()
+        .addPageListNode(...args);
+    },
+    registerView: ({ pageReference, viewName }: RegisterViewOptions) => {
+      if (!available) return;
+      pcore().getContextTreeManager().addViewNode(context(), pageReference, viewName);
     },
   };
 };
+
+const createDataPages = (context: () => string): DataPagesApi => ({
+  get available() {
+    return typeof pcore()?.getDataPageUtils === 'function';
+  },
+  read: (dataPage: string, parameters?: Record<string, unknown>, { fresh }: DataPageReadOptions = {}) => {
+    /* The cache option goes only when asked for; every gallery caller asks. */
+    const args: unknown[] = [dataPage, context(), parameters];
+    if (fresh) args.push({ invalidateCache: true });
+    return pcore()
+      .getDataPageUtils()
+      .getPageDataAsync(...args);
+  },
+});
+
+const createMessaging = (context: () => string): MessagingApi => ({
+  subscribe: (filter: unknown, handler: (message?: unknown) => void): Unsubscribe => {
+    const subscriptionId = pcore().getMessagingServiceManager().subscribe(filter, handler, context());
+    let detached = false;
+    return () => {
+      if (detached) return;
+      detached = true;
+      pcore().getMessagingServiceManager().unsubscribe(subscriptionId);
+    };
+  },
+});
+
+const createAttachments = (context: () => string): AttachmentsApi => ({
+  forCase: (caseKey: string) => pcore().getAttachmentUtils().getCaseAttachments(caseKey, context()),
+  download: (attachmentId: string, responseType?: string) =>
+    pcore().getAttachmentUtils().downloadAttachment(attachmentId, context(), responseType),
+  upload: (file: File, { onProgress, onError }: UploadOptions = {}) =>
+    pcore().getAttachmentUtils().uploadAttachment(file, onProgress, onError, context()),
+  linkToCase: async (caseKey: string, files: unknown[], type: string) => {
+    await pcore().getAttachmentUtils().linkAttachmentsToCase(caseKey, files, type, context());
+  },
+});
+
+const createComponents = (): ComponentsApi => ({
+  whenAvailable: (componentType: string | undefined, onReady: () => void) => {
+    if (componentType && !pcore().getComponentsRegistry().getLazyComponent(componentType)) {
+      pcore()
+        .getAssetLoader()
+        .getLoader('component-loader')([componentType])
+        .then(() => onReady());
+      return;
+    }
+    onReady();
+  },
+});
+
+const createStore = (context: () => string): StoreApi => ({
+  get available() {
+    return typeof pcore()?.getStore === 'function';
+  },
+  contextData: (storeContext?: string) => pcore()?.getStore?.()?.getState?.()?.data?.[storeContext ?? context()],
+  setProperty: (reference: string, value: unknown, storeContext?: string) => {
+    pcore()
+      .getStore()
+      .dispatch({ type: 'SET_PROPERTY', payload: { context: storeContext ?? context(), reference, value } });
+  },
+});
+
+const createContainers = (getPConnect: GetPConnect, context: () => string): ContainersApi => ({
+  items: (target: string) => pcore().getContainerUtils().getContainerItems(target),
+  currentItem: () => pcore().getContainerUtils().getContainerItemData(getPConnect().getTarget(), context()),
+});
+
+/**
+ * The operator's session, which needs no PConnect: exported on its own for
+ * code that runs outside a component, such as LangSwitch's page reload.
+ */
+export const environment: EnvironmentApi = {
+  locale: () => pcore()?.getEnvironmentInfo?.()?.getLocale?.(),
+  useLocale: () => pcore()?.getEnvironmentInfo?.()?.getUseLocale?.(),
+  timeZone: () => pcore()?.getEnvironmentInfo?.()?.getTimeZone?.(),
+  operatorId: () => pcore()?.getEnvironmentInfo?.()?.getOperatorIdentifier?.(),
+};
+
+let fieldRegistrations = 0;
+
+const createFields = (getPConnect: GetPConnect): FieldsApi => ({
+  onChange: (properties: string[], handler: () => void): Unsubscribe => {
+    const pConn = getPConnect();
+    const registration = [pConn.getContextName(), pConn.getPageReference(), properties] as const;
+    fieldRegistrations += 1;
+    const id = `platform-fields-${fieldRegistrations}`;
+    pcore()
+      .getCascadeManager()
+      .registerFields(...registration, handler, id);
+
+    let detached = false;
+    return () => {
+      if (detached) return;
+      detached = true;
+      pcore()
+        .getCascadeManager()
+        .unRegisterFields(...registration, handler, id);
+    };
+  },
+});
+
+const createForms = (): FormsApi => ({
+  isValid: (formContext: string, pageReference: string) =>
+    pcore().getFormUtils().isFormValid(formContext, pageReference),
+});
 
 /**
  * Build the platform facade for a component.
@@ -302,5 +473,14 @@ export const createPlatform = (getPConnect: GetPConnect): Platform => {
     links: createLinks(),
     caseActions: createCaseActions(getPConnect),
     contextTree: createContextTree(context),
+    dataPages: createDataPages(context),
+    messaging: createMessaging(context),
+    attachments: createAttachments(context),
+    components: createComponents(),
+    store: createStore(context),
+    containers: createContainers(getPConnect, context),
+    environment,
+    fields: createFields(getPConnect),
+    forms: createForms(),
   };
 };

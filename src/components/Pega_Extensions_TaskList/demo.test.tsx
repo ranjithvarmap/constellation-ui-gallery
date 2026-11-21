@@ -33,7 +33,7 @@ test("loads the tasks of the case it is on, keyed by the case's handle", async (
   const calls = await renderTaskList();
 
   expect(calls.queries).toEqual([
-    { dataView: 'D_TaskListList', options: { dataViewParameters: [{ pyID: CASE_KEY }] } },
+    { dataView: 'D_TaskListList', options: { dataViewParameters: [{ pyID: CASE_KEY }] }, context: 'app/primary_1' },
   ]);
   expect(screen.getByText('Project configuration has been completed')).toBeVisible();
 });

@@ -24,7 +24,13 @@ export type PlatformEvent =
   | 'assignmentSubmission'
   | 'createStageSaved'
   | 'dashboardFilterChange'
-  | 'dashboardFilterClearAll';
+  | 'dashboardFilterClearAll'
+  /**
+   * Published by the gallery's own widgets (`'WidgetUpdated'`) with
+   * `{ widget, count, caseID }` when the number of items they show changes,
+   * so a utilities panel can update its badge.
+   */
+  | 'widgetUpdated';
 
 /** Payload delivered with `dashboardFilterChange`. */
 export type DashboardFilterPayload = {
@@ -70,7 +76,8 @@ export type LoadDetailViewOptions = {
 };
 
 export type QueryOptions = {
-  dataViewParameters?: Record<string, unknown>;
+  /** Named parameters, or a one-element list of them; data views accept either. */
+  dataViewParameters?: Record<string, unknown> | Record<string, unknown>[];
   paging?: { pageNumber?: number; pageSize?: number };
   query?: Record<string, unknown>;
 };
@@ -78,6 +85,24 @@ export type QueryOptions = {
 export interface CaseDataApi {
   /** Fetch rows from a data view by name. */
   query(dataView: string, options?: QueryOptions): Promise<unknown>;
+
+  /**
+   * Fetch rows from a data view without naming a store context.
+   *
+   * Calendar, GanttChart and CPQTree have always queried this way, and every
+   * other caller passes its own context. Whether sending a context would
+   * change what an app-wide data view returns is unconfirmed without a
+   * server, so the two stay apart rather than merged.
+   */
+  queryUnscoped(dataView: string, options?: QueryOptions): Promise<unknown>;
+
+  /**
+   * Take the edit lock and store the etag it returns on this case's context.
+   *
+   * For a component that changed the case some other way (a local action
+   * run in a container of its own) and needs the next write to be current.
+   */
+  refreshEtag(caseKey: string): Promise<void>;
 
   /**
    * Write field values onto a case.
@@ -151,7 +176,38 @@ export interface ViewsApi {
    * sequence behind an embedded detail panel.
    */
   loadDetailView(options: LoadDetailViewOptions): Promise<ReactNode>;
+
+  /**
+   * Render a record's detail view from data already in hand, with no fetch.
+   *
+   * The second half of `loadDetailView`: hosts `data` in a transient container
+   * item keyed `${viewName}${id}` and instantiates the view on it. The view's
+   * resources must already be registered (`addResources`, or an earlier load).
+   */
+  renderDetailView(options: RenderDetailViewOptions): ReactNode;
+
+  /** Register the UI resources (view metadata) a DX API response carries. */
+  addResources(responseData: unknown): Promise<void>;
+
+  /**
+   * The registered metadata for a view of a class, as rendering needs it.
+   * Empty or missing when the view's resources were never registered.
+   */
+  metadata<TMeta = any>(viewName: string, className: string): TMeta;
 }
+
+export type RenderDetailViewOptions = {
+  /** Name of the view to render. */
+  viewName: string;
+  /** Record identifier; keys the transient item and is set as the view's `pyID`. */
+  id: string;
+  /** Class the view belongs to. */
+  className: string;
+  /** What the transient item holds, e.g. `{ content: record }`. */
+  data: unknown;
+  /** Merged into the view's config before it renders. */
+  configOverrides?: Record<string, unknown>;
+};
 
 export interface EventsApi {
   /**
@@ -166,6 +222,9 @@ export interface EventsApi {
     handler: (payload: TPayload) => void,
     options?: SubscribeOptions,
   ): Unsubscribe;
+
+  /** Publish a platform event, e.g. `createStageSaved` after a save for later. */
+  emit(event: PlatformEvent, payload: unknown): void;
 }
 
 export type CaseUrlOptions = {
@@ -182,6 +241,18 @@ export type CaseUrlOptions = {
 export interface LinksApi {
   /** Build a portal deep link that opens a case by handle. */
   caseUrl(options: CaseUrlOptions): string;
+
+  /**
+   * Build a link that opens a case by its class and business id alone.
+   *
+   * Sends only those two to the platform, without the page and handle that
+   * `caseUrl` adds: the link Calendar, CPQTree, NetworkDiagram, Scheduler and
+   * UtilityList have always built. The two produce different URLs.
+   */
+  workUrl(options: { className: string; workId: string }): string;
+
+  /** Build a link that shows a portal page (a landing page) by name. */
+  pageUrl(pageName: string): string;
 }
 
 export interface CaseActionsApi {
@@ -203,6 +274,19 @@ export type RegisterPageListOptions = {
   viewName: string;
   /** Property path of the page list, e.g. `.Items`. */
   pageListName: string;
+  /**
+   * The list's node description, sent as the fifth argument when given.
+   * CPQTree passes one (`type: 'multirecordlist'`, `referenceList`, …) for
+   * lists nested inside other lists; the gallery's other callers do not.
+   */
+  node?: Record<string, unknown>;
+};
+
+export type RegisterViewOptions = {
+  /** Full page reference of the view node, e.g. `caseInfo.content.Tree[0]`. */
+  pageReference: string;
+  /** View that renders it. */
+  viewName: string;
 };
 
 export interface ContextTreeApi {
@@ -213,6 +297,8 @@ export interface ContextTreeApi {
    * which is why callers do not need their own existence check.
    */
   registerPageList(options: RegisterPageListOptions): void;
+  /** Register a view node, so fields on a nested page resolve. No-ops like `registerPageList`. */
+  registerView(options: RegisterViewOptions): void;
   /** Whether the running platform exposes the context tree at all. */
   readonly available: boolean;
 }
@@ -298,6 +384,8 @@ export type PageScopeOptions = {
 export interface PageActions {
   /** Write a property on the scoped page, e.g. `.IsSelected` on one row. */
   updateFieldValue(property: string, value: unknown): void;
+  /** Tell the platform the property changed, which runs its change handling (validation, refresh). */
+  triggerFieldChange(property: string, value: unknown): void;
   /** Submit the assignment rendered in the scoped context. */
   finishAssignment(context: string, options: { outcomeID: string; jsActionQueryParams: object }): Promise<unknown>;
 }
@@ -331,6 +419,108 @@ export interface PagesApi {
   at(pageReference: string, options: PageScopeOptions): PageScope;
 }
 
+export type DataPageReadOptions = {
+  /** Skip the platform's cache and ask the server again. */
+  fresh?: boolean;
+};
+
+/** Single-page data pages (`getPageDataAsync`), read in this component's context. */
+export interface DataPagesApi {
+  /** Read a single-page data page. Resolves with the page itself. */
+  read<TPage = any>(
+    dataPage: string,
+    parameters?: Record<string, unknown>,
+    options?: DataPageReadOptions,
+  ): Promise<TPage>;
+  /** Whether the running platform can read data pages at all. */
+  readonly available: boolean;
+}
+
+/** Server-pushed messages over the platform's WebSocket channel. */
+export interface MessagingApi {
+  /**
+   * Run `handler` whenever the server pushes a message matching `filter`,
+   * e.g. `{ matcher: 'ATTACHMENTS', criteria: { ID: caseKey } }`.
+   * Returns its own unsubscribe, like `events.on`.
+   */
+  subscribe(filter: unknown, handler: (message?: unknown) => void): Unsubscribe;
+}
+
+export type UploadOptions = {
+  onProgress?: (event: unknown) => void;
+  onError?: (error: unknown) => void;
+};
+
+/** Case attachments, in this component's context. */
+export interface AttachmentsApi {
+  /** The attachments on a case. */
+  forCase<TAttachment = any>(caseKey: string): Promise<TAttachment[]>;
+  /** Download one attachment's content. */
+  download(attachmentId: string, responseType?: string): Promise<{ data: any; headers: Record<string, string> }>;
+  /**
+   * Upload a file. It is not on any case yet: pass the returned `ID` to
+   * `linkToCase`. Rejects, or resolves without an `ID`, when the upload failed.
+   */
+  upload(file: File, options?: UploadOptions): Promise<{ ID?: string } & Record<string, unknown>>;
+  /** Link uploaded files (each carrying the `ID` from `upload`) to a case. */
+  linkToCase(caseKey: string, files: unknown[], type: string): Promise<void>;
+}
+
+/** Platform components that load on demand. */
+export interface ComponentsApi {
+  /**
+   * Call `onReady` once a component type can render: straight away when it is
+   * already loaded (or no type is given), else after the loader fetches it.
+   * Templates count `onReady` calls to know when every column can render.
+   */
+  whenAvailable(componentType: string | undefined, onReady: () => void): void;
+}
+
+/** The redux store behind the platform, for the reads PConnect does not offer. */
+export interface StoreApi {
+  /** Everything the store holds for a context (default: this component's). */
+  contextData<TData = any>(context?: string): TData | undefined;
+  /** Set a value at a reference within a context, as the platform's own SET_PROPERTY does. */
+  setProperty(reference: string, value: unknown, context?: string): void;
+  /** Whether the running platform exposes the store. */
+  readonly available: boolean;
+}
+
+/** Container items: the case, assignment and modal views a container holds. */
+export interface ContainersApi {
+  /** Every item in a container (e.g. `app/primary`), by context name, oldest first. */
+  items(target: string): Record<string, unknown>;
+  /** The item this component renders in. */
+  currentItem<TItem = any>(): TItem | undefined;
+}
+
+/** Facts about the operator's session. Each read is optional-chained: off-platform they return undefined. */
+export interface EnvironmentApi {
+  /** The locale the portal renders in. */
+  locale(): string | undefined;
+  /** The operator's chosen locale. */
+  useLocale(): string | undefined;
+  /** The operator's time zone. */
+  timeZone(): string | undefined;
+  /** The operator's id. */
+  operatorId(): string | undefined;
+}
+
+/** Field change notifications (the platform's cascade manager). */
+export interface FieldsApi {
+  /**
+   * Call `handler` whenever one of `properties` changes on this component's page.
+   * Returns the matching teardown; the registration id stays inside.
+   */
+  onChange(properties: string[], handler: () => void): Unsubscribe;
+}
+
+/** Form validation. */
+export interface FormsApi {
+  /** Whether the form on a page of a context is valid; runs the platform's validation. */
+  isValid(context: string, pageReference: string): boolean;
+}
+
 /** The full platform surface handed to a component. */
 export interface Platform {
   /** Store context path this component is bound to. */
@@ -345,4 +535,13 @@ export interface Platform {
   readonly links: LinksApi;
   readonly caseActions: CaseActionsApi;
   readonly contextTree: ContextTreeApi;
+  readonly dataPages: DataPagesApi;
+  readonly messaging: MessagingApi;
+  readonly attachments: AttachmentsApi;
+  readonly components: ComponentsApi;
+  readonly store: StoreApi;
+  readonly containers: ContainersApi;
+  readonly environment: EnvironmentApi;
+  readonly fields: FieldsApi;
+  readonly forms: FormsApi;
 }

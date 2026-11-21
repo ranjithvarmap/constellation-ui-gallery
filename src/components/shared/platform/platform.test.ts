@@ -388,4 +388,266 @@ describe('platform facade', () => {
       expect(platform.text.loadingContent()).toBe('Loading content...');
     });
   });
+
+  describe('caseData.queryUnscoped', () => {
+    it("sends no context, where query sends the component's", async () => {
+      const platform = createPlatform(fake.getPConnect);
+
+      await platform.caseData.query('D_A', {});
+      await platform.caseData.queryUnscoped('D_B', {});
+
+      expect(fake.calls.queries).toEqual([
+        { dataView: 'D_A', options: {}, context: 'app/primary_1' },
+        { dataView: 'D_B', options: {}, context: undefined },
+      ]);
+    });
+  });
+
+  describe('caseData.refreshEtag', () => {
+    it("stores the edit lock's etag on the component's context", async () => {
+      fake.restore();
+      fake = installPlatformFake({ etag: 'etag-7' });
+      await createPlatform(fake.getPConnect).caseData.refreshEtag('CASE-1');
+      expect(fake.calls.etagUpdates).toEqual([{ context: 'app/primary_1', etag: 'etag-7' }]);
+    });
+  });
+
+  describe('views.renderDetailView', () => {
+    it('hosts the given data and renders the view without fetching it', () => {
+      const platform = createPlatform(fake.getPConnect);
+
+      platform.views.renderDetailView({ viewName: 'Card', id: 'N-1', className: 'Work-Node', data: { content: {} } });
+
+      expect(fake.calls.detailViews).toEqual([]);
+      expect(fake.calls.pages).toEqual([
+        expect.objectContaining({
+          pageReference: 'content',
+          options: { contextName: 'transient-1', context: 'transient-1', pageReference: 'content' },
+        }),
+      ]);
+    });
+  });
+
+  describe('events.emit', () => {
+    it("publishes named events under the platform constant, or the gallery's own name", () => {
+      const platform = createPlatform(fake.getPConnect);
+
+      platform.events.emit('createStageSaved', { id: 1 });
+      platform.events.emit('widgetUpdated', { count: 2 });
+
+      expect(fake.calls.published).toEqual([
+        { event: 'CREATE_STAGE_SAVED', payload: { id: 1 } },
+        { event: 'WidgetUpdated', payload: { count: 2 } },
+      ]);
+    });
+  });
+
+  describe('links', () => {
+    it('workUrl sends no handle, so it differs from caseUrl', () => {
+      const platform = createPlatform(fake.getPConnect);
+
+      expect(platform.links.workUrl({ className: 'Work-A', workId: 'A-1' })).toBe('/case/Work-A/A-1');
+      expect(platform.links.caseUrl({ caseKey: 'K-1', className: 'Work-A', workId: 'A-1' })).toBe(
+        '/case/Work-A/A-1?handle=K-1',
+      );
+    });
+
+    it('pageUrl links to a portal page by name', () => {
+      expect(createPlatform(fake.getPConnect).links.pageUrl('Reports')).toBe('/page/Reports');
+    });
+  });
+
+  describe('contextTree', () => {
+    it('sends a page-list node description as a fifth argument only when given', () => {
+      const platform = createPlatform(fake.getPConnect);
+
+      platform.contextTree.registerPageList({ pageReference: 'caseInfo.content', viewName: 'V', pageListName: '.A' });
+      platform.contextTree.registerPageList({
+        pageReference: 'caseInfo.content',
+        viewName: 'V',
+        pageListName: '.B',
+        node: { type: 'multirecordlist' },
+      });
+
+      expect(fake.calls.registeredPageLists).toEqual([
+        ['app/primary_1', 'caseInfo.content', 'V', '.A'],
+        ['app/primary_1', 'caseInfo.content', 'V', '.B', { type: 'multirecordlist' }],
+      ]);
+    });
+
+    it('registers view nodes, and does nothing on a platform without the context tree', () => {
+      createPlatform(fake.getPConnect).contextTree.registerView({
+        pageReference: 'caseInfo.content.Tree[0]',
+        viewName: 'V',
+      });
+      expect(fake.calls.registeredViews).toEqual([['app/primary_1', 'caseInfo.content.Tree[0]', 'V']]);
+
+      fake.restore();
+      fake = installPlatformFake({ contextTreeAvailable: false });
+      expect(() =>
+        createPlatform(fake.getPConnect).contextTree.registerView({ pageReference: 'x', viewName: 'V' }),
+      ).not.toThrow();
+    });
+  });
+
+  describe('dataPages.read', () => {
+    it("reads in the component's context, asking past the cache only when told to", async () => {
+      fake.restore();
+      fake = installPlatformFake({ dataPages: { D_Org: { pyLabel: 'Org' } } });
+      const platform = createPlatform(fake.getPConnect);
+
+      await expect(platform.dataPages.read('D_Org', { pyGUID: 'G' }, { fresh: true })).resolves.toEqual({
+        pyLabel: 'Org',
+      });
+      await platform.dataPages.read('D_Other');
+
+      expect(fake.calls.dataPageReads).toEqual([
+        {
+          dataPage: 'D_Org',
+          context: 'app/primary_1',
+          parameters: { pyGUID: 'G' },
+          options: { invalidateCache: true },
+        },
+        { dataPage: 'D_Other', context: 'app/primary_1', parameters: undefined, options: undefined },
+      ]);
+      expect(platform.dataPages.available).toBe(true);
+    });
+
+    it('reports unavailable when no platform is running', () => {
+      fake.restore();
+      const previous = (window as any).PCore;
+      (window as any).PCore = undefined;
+      try {
+        expect(createPlatform(() => ({})).dataPages.available).toBe(false);
+        expect(createPlatform(() => ({})).store.available).toBe(false);
+      } finally {
+        (window as any).PCore = previous;
+        fake = installPlatformFake();
+      }
+    });
+  });
+
+  describe('messaging.subscribe', () => {
+    it("subscribes in the component's context and detaches once", () => {
+      const platform = createPlatform(fake.getPConnect);
+      const filter = { matcher: 'ATTACHMENTS', criteria: { ID: 'K-1' } };
+
+      const off = platform.messaging.subscribe(filter, () => {});
+      expect(fake.calls.messaging).toEqual([
+        expect.objectContaining({ filter, context: 'app/primary_1', active: true }),
+      ]);
+
+      off();
+      off();
+      expect(fake.calls.messaging[0].active).toBe(false);
+    });
+  });
+
+  describe('attachments', () => {
+    it("uploads, links and reads in the component's context", async () => {
+      const platform = createPlatform(fake.getPConnect);
+
+      const uploaded = await platform.attachments.upload({ name: 'photo.png' } as File);
+      await platform.attachments.linkToCase('K-1', [{ ID: uploaded.ID }], 'File');
+      await platform.attachments.forCase('K-1');
+      await platform.attachments.download('A-9', 'arraybuffer');
+
+      expect(fake.calls.uploads).toEqual([{ name: 'photo.png', context: 'app/primary_1' }]);
+      expect(fake.calls.attachmentLinks).toEqual([
+        { caseKey: 'K-1', files: [{ ID: 'attachment-1' }], type: 'File', context: 'app/primary_1' },
+      ]);
+      expect(fake.calls.attachmentReads).toEqual([{ caseKey: 'K-1', context: 'app/primary_1' }]);
+      expect(fake.calls.downloads).toEqual(['A-9']);
+    });
+  });
+
+  describe('components.whenAvailable', () => {
+    it('is ready at once for a loaded or missing type, and after the loader otherwise', async () => {
+      const platform = createPlatform(fake.getPConnect);
+      const ready: string[] = [];
+
+      platform.components.whenAvailable(undefined, () => ready.push('none'));
+      platform.components.whenAvailable('TextInput', () => ready.push('loaded'));
+      expect(ready).toEqual(['none', 'loaded']);
+      expect(fake.calls.loadedComponents).toEqual([]);
+
+      (window as any).PCore.getComponentsRegistry = () => ({ getLazyComponent: () => undefined });
+      platform.components.whenAvailable('Custom', () => ready.push('fetched'));
+      expect(ready).toEqual(['none', 'loaded']);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(ready).toEqual(['none', 'loaded', 'fetched']);
+      expect(fake.calls.loadedComponents).toEqual(['Custom']);
+    });
+  });
+
+  describe('store', () => {
+    it("reads and sets a context's data, defaulting to the component's", () => {
+      fake.restore();
+      fake = installPlatformFake({ store: { 'app/primary_1': { caseInfo: { ID: 'K-1' } }, other: { x: 1 } } });
+      const platform = createPlatform(fake.getPConnect);
+
+      expect(platform.store.contextData()).toEqual({ caseInfo: { ID: 'K-1' } });
+      expect(platform.store.contextData('other')).toEqual({ x: 1 });
+
+      platform.store.setProperty('dataInfo.content', { a: 1 });
+      expect(fake.calls.dispatched).toEqual([
+        { type: 'SET_PROPERTY', payload: { context: 'app/primary_1', reference: 'dataInfo.content', value: { a: 1 } } },
+      ]);
+    });
+  });
+
+  describe('containers', () => {
+    it('lists a container and reads the item the component renders in', () => {
+      fake.restore();
+      fake = installPlatformFake({ containerItems: { 'app/primary_1': { key: 'K' }, 'app/primary_2': { key: 'L' } } });
+      const platform = createPlatform(fake.getPConnect);
+
+      expect(Object.keys(platform.containers.items('app/primary'))).toEqual(['app/primary_1', 'app/primary_2']);
+      expect(platform.containers.currentItem()).toEqual({ key: 'K' });
+    });
+  });
+
+  describe('environment', () => {
+    it('reads each fact from its own accessor, and undefined off-platform', () => {
+      fake.restore();
+      fake = installPlatformFake({
+        environment: { locale: 'fr-FR', useLocale: 'fr_FR', timeZone: 'Europe/Paris', operatorId: 'op@x' },
+      });
+      const { environment } = createPlatform(fake.getPConnect);
+      expect([environment.locale(), environment.useLocale(), environment.timeZone(), environment.operatorId()]).toEqual(
+        ['fr-FR', 'fr_FR', 'Europe/Paris', 'op@x'],
+      );
+
+      (window as any).PCore = {};
+      expect(environment.useLocale()).toBeUndefined();
+    });
+  });
+
+  describe('fields.onChange', () => {
+    it('registers on the page with an id of its own and unregisters the same callback and id', () => {
+      const platform = createPlatform(fake.getPConnect);
+      const handler = jest.fn();
+
+      const off = platform.fields.onChange(['.Notes'], handler);
+      const [registration] = fake.calls.cascades;
+      expect(registration).toEqual(
+        expect.objectContaining({ context: 'app/primary_1', pageReference: 'caseInfo.content', fields: ['.Notes'] }),
+      );
+      registration.notify();
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      off();
+      off();
+      expect(registration.active).toBe(false);
+    });
+  });
+
+  describe('forms.isValid', () => {
+    it("answers with the platform's validation", () => {
+      fake.restore();
+      fake = installPlatformFake({ formValid: false });
+      expect(createPlatform(fake.getPConnect).forms.isValid('app/primary_1', 'caseInfo.content')).toBe(false);
+    });
+  });
 });

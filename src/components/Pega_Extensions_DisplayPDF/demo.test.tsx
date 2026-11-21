@@ -30,7 +30,11 @@ test("lists the case's PDF attachments, read keyed by the case's handle", async 
 
   expect(await screen.findByText('File #3')).toBeVisible();
   expect(platform.calls.queries).toEqual([
-    { dataView: 'D_CasePDFs', options: { dataViewParameters: [{ caseInstanceKey: CASE_KEY }] } },
+    {
+      dataView: 'D_CasePDFs',
+      options: { dataViewParameters: [{ caseInstanceKey: CASE_KEY }] },
+      context: 'app/primary_1',
+    },
   ]);
 });
 

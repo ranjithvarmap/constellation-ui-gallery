@@ -74,7 +74,11 @@ test("reads them from a data page instead when asked, keyed by the case's handle
   const { calls } = await renderAttachments(false);
 
   expect(calls.queries).toEqual([
-    { dataView: 'D_Attachments', options: { dataViewParameters: [{ LinkRefFrom: CASE_KEY }] } },
+    {
+      dataView: 'D_Attachments',
+      options: { dataViewParameters: [{ LinkRefFrom: CASE_KEY }] },
+      context: 'app/primary_1',
+    },
   ]);
   expect(calls.attachmentReads).toEqual([]);
 });

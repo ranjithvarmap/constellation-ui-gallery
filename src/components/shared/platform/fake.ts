@@ -84,6 +84,10 @@ export type PlatformFakeOptions = {
   caseAttachments?: unknown[];
   /** How `getAttachmentUtils().downloadAttachment` answers. Defaults to empty content. */
   downloadAttachment?: (id: string) => Promise<unknown>;
+  /** What each single-page data page resolves with, by name. Unlisted pages resolve with `{}`. */
+  dataPages?: Record<string, unknown>;
+  /** The operator's session, as `getEnvironmentInfo()` reports it. */
+  environment?: { locale?: string; useLocale?: string; timeZone?: string; operatorId?: string };
 };
 
 /** One field per `platform.caseInfo` read, plus the two `actionId` chooses between. */
@@ -173,7 +177,12 @@ export type PlatformFake = {
   /** Everything the component did, in order, for assertions. */
   calls: {
     fieldUpdates: FieldUpdate[];
-    queries: { dataView: string; options: unknown }[];
+    /** `context` is the store context sent, or undefined for an unscoped query. */
+    queries: { dataView: string; options: unknown; context: string | undefined }[];
+    /** Single-page data page reads: the exact arguments `getPageDataAsync` received. */
+    dataPageReads: { dataPage: string; context: string; parameters: unknown; options: unknown }[];
+    /** View nodes registered with the context tree: (context, pageReference, viewName). */
+    registeredViews: unknown[][];
     detailViews: { dataPage: string; viewName: string; params: unknown }[];
     subscriptions: Subscription[];
     openedCases: { caseKey: string; className: string }[];
@@ -351,6 +360,8 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     formValid = true,
     caseAttachments = [],
     downloadAttachment = () => Promise.resolve({ data: '' }),
+    dataPages = {},
+    environment = {},
   } = options;
 
   const calls: PlatformFake['calls'] = {
@@ -364,6 +375,8 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     previewedCases: [],
     fieldValues: [],
     registeredPageLists: [],
+    dataPageReads: [],
+    registeredViews: [],
     pages: [],
     pageCalls: [],
     restCalls: [],
@@ -401,8 +414,8 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     );
 
   const dataApiUtils = {
-    getData: (dataView: string, opts: unknown) => {
-      calls.queries.push({ dataView, options: opts });
+    getData: (dataView: string, opts: unknown, context?: string) => {
+      calls.queries.push({ dataView, options: opts, context });
       return queryError ? Promise.reject(queryError) : Promise.resolve({ data: { data: rows } });
     },
     getCaseEditLock: () => Promise.resolve({ headers: { etag } }),
@@ -435,6 +448,20 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     }),
 
     getFormUtils: () => ({ isFormValid: () => formValid }),
+
+    getDataPageUtils: () => ({
+      getPageDataAsync: (dataPage: string, context: string, parameters: unknown, opts: unknown) => {
+        calls.dataPageReads.push({ dataPage, context, parameters, options: opts });
+        return Promise.resolve(dataPages[dataPage] ?? {});
+      },
+    }),
+
+    getEnvironmentInfo: () => ({
+      getLocale: () => environment.locale,
+      getUseLocale: () => environment.useLocale,
+      getTimeZone: () => environment.timeZone,
+      getOperatorIdentifier: () => environment.operatorId,
+    }),
 
     getAttachmentUtils: () => ({
       getCaseAttachments: (caseKey: string, context: string) => {
@@ -549,10 +576,14 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
       },
     }),
 
+    /* URLs show what was sent: a page link, or a case link with the handle
+       appended only when one was passed, so caseUrl and workUrl differ. */
     getSemanticUrlUtils: () => ({
-      getActions: () => ({ ACTION_OPENWORKBYHANDLE: 'openWorkByHandle' }),
-      getResolvedSemanticURL: (_action: string, classInfo: any, workInfo: any) =>
-        `/case/${classInfo.caseClassName}/${workInfo.workID}`,
+      getActions: () => ({ ACTION_OPENWORKBYHANDLE: 'openWorkByHandle', ACTION_SHOWVIEW: 'showView' }),
+      getResolvedSemanticURL: (action: string, classInfo: any, workInfo: any, _page?: unknown, caseInfo?: any) =>
+        action === 'showView'
+          ? `/page/${classInfo.page}`
+          : `/case/${classInfo.caseClassName}/${workInfo.workID}${caseInfo?.caseID ? `?handle=${caseInfo.caseID}` : ''}`,
     }),
 
     getLocaleUtils: () => ({
@@ -573,7 +604,9 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
       addPageListNode: (...args: unknown[]) => {
         calls.registeredPageLists.push(args);
       },
-      addViewNode: () => {},
+      addViewNode: (...args: unknown[]) => {
+        calls.registeredViews.push(args);
+      },
     });
   }
 

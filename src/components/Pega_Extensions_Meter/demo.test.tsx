@@ -39,7 +39,7 @@ test("reads a grouped meter's segments for the case it is on", async () => {
 
   expect(await screen.findByText(/Blocked/)).toBeVisible();
   expect(platform.calls.queries).toEqual([
-    { dataView: 'D_TestResults', options: { dataViewParameters: [{ pyID: CASE_KEY }] } },
+    { dataView: 'D_TestResults', options: { dataViewParameters: [{ pyID: CASE_KEY }] }, context: 'app/primary_1' },
   ]);
 });
 
