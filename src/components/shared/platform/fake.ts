@@ -23,20 +23,26 @@ export type FakeViewMeta = { name: string; config: Record<string, any> };
 export type Subscription = { event: string; id: string; active: boolean };
 
 export type PlatformFakeOptions = {
-  /** Rows returned by `caseData.query`. */
-  rows?: unknown[];
+  /** Rows returned by `caseData.query`; a function is read on every query, for data a story keeps elsewhere. */
+  rows?: unknown[] | (() => unknown[]);
   /** `dataInfo` payload returned when a detail view is fetched. */
   detailData?: unknown;
   /** Etag handed back by the edit lock. */
   etag?: string;
+  /** Called with each case field write, after it is recorded, so a story can persist it. */
+  onFieldUpdate?: (caseKey: string, fields: Record<string, unknown>) => void;
   /**
    * What a rendered detail view, or metadata rendered on a scoped page,
    * should look like. Receives the metadata, whose `config` carries the record
    * id or field, and the options the PConnect was created with, whose
-   * `pageReference` says which row, so a story can render real content.
+   * `pageReference` says which row, so a story can render real content. The
+   * third argument is the metadata the PConnect itself was created with (a
+   * scoped page's own meta), when it differs from what is being rendered.
    * Defaults to a marker node.
    */
-  renderView?: (meta: FakeViewMeta, options: Record<string, any>) => ReactNode;
+  renderView?: (meta: FakeViewMeta, options: Record<string, any>, pageMeta?: any) => ReactNode;
+  /** What `views.metadata` returns for a view of a class. Defaults to `{ name, config: {} }`. */
+  viewMetadata?: (viewName: string, className: string) => unknown;
   /** Set false to simulate a platform without the context tree manager. */
   contextTreeAvailable?: boolean;
   /** Context name reported by the fake PConnect. */
@@ -86,6 +92,11 @@ export type PlatformFakeOptions = {
   downloadAttachment?: (id: string) => Promise<unknown>;
   /** What each single-page data page resolves with, by name. Unlisted pages resolve with `{}`. */
   dataPages?: Record<string, unknown>;
+  /**
+   * Answers every data page read instead of `dataPages`, for a story whose page
+   * computes its reply from the parameters (a chat answer, a search).
+   */
+  readDataPage?: (dataPage: string, parameters: any) => unknown;
   /** The operator's session, as `getEnvironmentInfo()` reports it. */
   environment?: { locale?: string; useLocale?: string; timeZone?: string; operatorId?: string };
 };
@@ -345,7 +356,9 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     rows = [],
     detailData = {},
     etag = 'etag-1',
+    onFieldUpdate,
     renderView = (meta: FakeViewMeta) => createElement('div', { 'data-testid': 'detail-view' }, meta.name),
+    viewMetadata = (viewName: string) => ({ name: viewName, config: {} }),
     contextTreeAvailable = true,
     contextName = 'app/primary_1',
     pConnect = {},
@@ -361,6 +374,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     caseAttachments = [],
     downloadAttachment = () => Promise.resolve({ data: '' }),
     dataPages = {},
+    readDataPage,
     environment = {},
   } = options;
 
@@ -416,11 +430,13 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
   const dataApiUtils = {
     getData: (dataView: string, opts: unknown, context?: string) => {
       calls.queries.push({ dataView, options: opts, context });
-      return queryError ? Promise.reject(queryError) : Promise.resolve({ data: { data: rows } });
+      const data = typeof rows === 'function' ? rows() : rows;
+      return queryError ? Promise.reject(queryError) : Promise.resolve({ data: { data } });
     },
     getCaseEditLock: () => Promise.resolve({ headers: { etag } }),
     updateCaseEditFieldsData: (caseKey: string, payload: any) => {
       calls.fieldUpdates.push({ caseKey, fields: payload[caseKey] });
+      onFieldUpdate?.(caseKey, payload[caseKey]);
       return Promise.resolve({ data: {} });
     },
     getDataObjectView: (dataPage: string, viewName: string, params: unknown) => {
@@ -452,7 +468,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
     getDataPageUtils: () => ({
       getPageDataAsync: (dataPage: string, context: string, parameters: unknown, opts: unknown) => {
         calls.dataPageReads.push({ dataPage, context, parameters, options: opts });
-        return Promise.resolve(dataPages[dataPage] ?? {});
+        return Promise.resolve(readDataPage ? readDataPage(dataPage, parameters) : (dataPages[dataPage] ?? {}));
       },
     }),
 
@@ -530,7 +546,8 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
 
     getViewResources: () => ({
       updateViewResources: () => Promise.resolve(),
-      fetchViewResources: (viewName: string) => ({ name: viewName, config: {} }),
+      fetchViewResources: (viewName: string, _pConnect: unknown, className: string) =>
+        viewMetadata(viewName, className),
     }),
 
     /* Serves both uses: hosting a detail view (createComponent) and scoping to
@@ -540,7 +557,7 @@ export const installPlatformFake = (options: PlatformFakeOptions = {}): Platform
       const pageReference: string = pageOptions.pageReference ?? '';
       const env: { index?: number; getPConnect: () => unknown } = {
         getPConnect: () => ({
-          createComponent: (meta?: FakeViewMeta) => renderView(meta ?? config.meta, pageOptions),
+          createComponent: (meta?: FakeViewMeta) => renderView(meta ?? config.meta, pageOptions, config?.meta),
           getContextName: () => pageOptions.contextName ?? pageOptions.context ?? contextName,
           getActionsApi: () => recordingApi(pageReference, 'actions'),
           getListActions: () => recordingApi(pageReference, 'listActions'),
