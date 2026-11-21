@@ -1,26 +1,23 @@
 import { Button, useToaster } from '@pega/cosmos-react-core';
 import type { ActionButtonData, ActionButtonsProps } from './types';
 import { ActionButtonsWrapper, HideActionButtons } from './styles';
+import { createPlatform } from '../shared/platform';
 
 export default function ActionButtons({ getPConnect }: ActionButtonsProps) {
   const toasterCtx = useToaster();
 
-  const CASE_CONSTANTS = (window as any).PCore.getConstants().CASE_INFO;
-  const actionsButtonData: ActionButtonData = getPConnect().getValue(CASE_CONSTANTS.ACTION_BUTTONS);
+  const actionsButtonData = createPlatform(getPConnect).caseInfo.actionButtons<ActionButtonData>() as ActionButtonData;
 
   const actionsAPI = getPConnect().getActionsApi();
   const context = getPConnect().getContextName();
 
-  const localizedVal = (window as any).PCore.getLocaleUtils().getLocaleValue;
+  const localizedVal = createPlatform(getPConnect).text.locale;
   const localeCategory = 'Assignment';
 
   function onSaveActionSuccess(data: any) {
     // skip publishing EVENT_CANCEL for save for later use-cases.
     actionsAPI.cancelAssignment(context, true).then(() => {
-      (window as any).PCore.getPubSubUtils().publish(
-        (window as any).PCore.getConstants().PUB_SUB_EVENTS.CASE_EVENTS.CREATE_STAGE_SAVED,
-        data,
-      );
+      createPlatform(getPConnect).events.emit('createStageSaved', data);
     });
   }
 
@@ -49,9 +46,8 @@ export default function ActionButtons({ getPConnect }: ActionButtonsProps) {
           });
           const caseID = getPConnect().getCaseInfo().getKey();
           const assignmentID = getPConnect().getCaseInfo().getAssignmentID();
-          const caseType = getPConnect()
-            .getCaseInfo()
-            .c11nEnv.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_TYPE_ID);
+          /* Read through the CaseInfo's own PConnect, as before the facade. */
+          const caseType = createPlatform(() => getPConnect().getCaseInfo().c11nEnv).caseInfo.caseTypeId();
           onSaveActionSuccess({ caseType, caseID, assignmentID });
         });
         break;

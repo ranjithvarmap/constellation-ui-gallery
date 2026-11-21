@@ -1,3 +1,5 @@
+import { createPlatform } from '../shared/platform';
+
 const loadedViewResources = new Set<string>();
 
 type LoadRowDetailProps = {
@@ -49,8 +51,7 @@ export const getBasePageReference = (getPConnect: any): string => {
 const normalizeListName = (embedDataRef: string): string =>
   embedDataRef.startsWith('.') ? embedDataRef.slice(1) : embedDataRef;
 
-const segmentInPath = (path: string, segment: string): boolean =>
-  new RegExp(`\\.${segment}\\[\\d+\\]`).test(path);
+const segmentInPath = (path: string, segment: string): boolean => new RegExp(`\\.${segment}\\[\\d+\\]`).test(path);
 
 /** Extracts the embedded page-list path from a Pega field config value. */
 export const extractPageRefFromConfig = (configValue: string): string => {
@@ -68,11 +69,7 @@ export const extractPageRefFromConfig = (configValue: string): string => {
 };
 
 /** Builds the pageReference for a row in the embedded page list. */
-export const buildRowPageReference = (
-  basePageRef: string,
-  embedDataRef: string,
-  rowIndex: number,
-): string => {
+export const buildRowPageReference = (basePageRef: string, embedDataRef: string, rowIndex: number): string => {
   const listPath = normalizeListName(embedDataRef);
   if (!listPath.includes('[].')) {
     return `${basePageRef}.${listPath}[${rowIndex}]`;
@@ -92,7 +89,7 @@ export const buildRowPageReference = (
   return `${current}.${lastSegment}[${rowIndex}]`;
 };
 
-/** Builds the referenceList option for createPConnect. */
+/** Builds the referenceList option for a page scope (platform.pages.at). */
 export const buildReferenceList = (embedDataRef: string): string => {
   const listPath = normalizeListName(embedDataRef);
   if (!listPath.includes('[].')) {
@@ -132,8 +129,7 @@ const getRowEmbedClass = (getPConnect: any, embedDataRef: string, rowIndex: numb
   }
   const basePageRef = getBasePageReference(getPConnect);
   const rowPageRef = buildRowPageReference(basePageRef, embedDataRef, rowIndex);
-  const context = getPConnect().getContextName();
-  const storeData = (window as any).PCore.getStore()?.getState()?.data?.[context];
+  const storeData = createPlatform(getPConnect).store.contextData();
   const row = getNestedStoreValue(storeData, rowPageRef);
   return row?.pxObjClass || row?.pyObjClass || '';
 };
@@ -144,8 +140,8 @@ const ensureViewResources = async (detailViewName: string, embedClass: string, g
     return;
   }
 
-  const { fetchViewResources, updateViewResources } = (window as any).PCore.getViewResources();
-  const cachedMetadata = fetchViewResources(detailViewName, getPConnect(), embedClass);
+  const { views } = createPlatform(getPConnect);
+  const cachedMetadata = views.metadata(detailViewName, embedClass);
   if (hasViewMetadata(cachedMetadata)) {
     loadedViewResources.add(cacheKey);
     return;
@@ -154,28 +150,23 @@ const ensureViewResources = async (detailViewName: string, embedClass: string, g
   const pConnect = getPConnect();
   const caseInstanceKey =
     pConnect.getCaseInfo?.()?.getKey?.() ||
-    pConnect.getValue?.((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+    (pConnect.getValue ? createPlatform(() => pConnect).caseInfo.key() : undefined);
 
-  const response = await (window as any).PCore.getRestClient().invokeRestApi(
-    'loadView',
-    {
-      queryPayload: {
-        caseClassName: embedClass,
-        caseID: caseInstanceKey,
-        viewID: detailViewName,
-      },
-    },
-    pConnect.getContextName(),
-  );
+  const response = await createPlatform(() => pConnect).caseData.loadView({
+    caseKey: caseInstanceKey,
+    className: embedClass,
+    viewId: detailViewName,
+    context: pConnect.getContextName(),
+  });
 
-  await updateViewResources(response.data);
+  await views.addResources(response.data);
   loadedViewResources.add(cacheKey);
 };
 
 /**
  * Lazy-loads and renders the detail view for an embedded page-list row.
  * Follows the DynamicHierarchicalForm pattern: fetch view metadata for the
- * embedded data class and bind createPConnect to the row pageReference.
+ * embedded data class and scope a PConnect to the row pageReference.
  */
 export const loadRowDetailView = async (props: LoadRowDetailProps) => {
   const { detailViewName, embedDataRef, rowIndex, getPConnect } = props;
@@ -191,25 +182,17 @@ export const loadRowDetailView = async (props: LoadRowDetailProps) => {
   const contextName = pConnect.getContextName();
   const basePageRef = getBasePageReference(getPConnect);
   const pageReference = buildRowPageReference(basePageRef, embedDataRef, rowIndex);
-  const metadata = (window as any).PCore.getViewResources().fetchViewResources(
-    detailViewName,
-    pConnect,
-    embedClass,
-  );
+  const metadata = createPlatform(() => pConnect).views.metadata(detailViewName, embedClass);
 
-  const messageConfig = {
-    meta: metadata,
-    options: {
-      contextName,
+  return createPlatform(() => pConnect)
+    .pages.at(pageReference, {
+      meta: metadata,
       context: contextName,
-      pageReference,
+      contextName,
       referenceList: buildReferenceList(embedDataRef),
       target: pConnect.getTarget(),
-    },
-  };
-
-  const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-  return c11nEnv.getPConnect().createComponent(messageConfig.meta);
+    })
+    .render(metadata);
 };
 
 /**

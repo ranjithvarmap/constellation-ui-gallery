@@ -33,6 +33,7 @@ import {
   prioritizeTimezones,
   resolveConfiguredLocale,
 } from './utils';
+import { createPlatform } from '../shared/platform';
 
 type LangSwitchProps = {
   Configuration?: string;
@@ -59,6 +60,15 @@ const didTimezonePreferenceSaveSucceed = (response: unknown) => {
   }
 
   return !('error' in response) && !('errors' in response);
+};
+
+/* Saves the operator's locale or time zone through D_SetLocale. Off-platform,
+   with no data pages to read, it resolves undefined, as the optional chain it
+   replaces did. */
+const readSetLocale = (getPConnect: any, parameters: Record<string, string>) => {
+  if (!getPConnect) return Promise.resolve(undefined);
+  const { dataPages } = createPlatform(getPConnect);
+  return dataPages.available ? dataPages.read('D_SetLocale', parameters, { fresh: true }) : Promise.resolve(undefined);
 };
 
 export const PegaExtensionsLangSwitch = (props: LangSwitchProps) => {
@@ -166,13 +176,7 @@ export const PegaExtensionsLangSwitch = (props: LangSwitchProps) => {
     setIsSwitchingLocale(true);
 
     try {
-      const context = getPConnect?.()?.getContextName?.() ?? '';
-      await langSwitchRuntime.runtime.PCore?.getDataPageUtils?.()?.getPageDataAsync(
-        'D_SetLocale',
-        context,
-        { useLocale: nextLocale },
-        { invalidateCache: true },
-      );
+      await readSetLocale(getPConnect, { useLocale: nextLocale });
 
       langSwitchRuntime.reloadPage(nextLocale);
     } catch {
@@ -203,13 +207,7 @@ export const PegaExtensionsLangSwitch = (props: LangSwitchProps) => {
     setIsSwitchingTimezone(true);
 
     try {
-      const context = getPConnect?.()?.getContextName?.() ?? '';
-      const response = await langSwitchRuntime.runtime.PCore?.getDataPageUtils?.()?.getPageDataAsync(
-        'D_SetLocale',
-        context,
-        { useTimeZone: selectedTimezone },
-        { invalidateCache: true },
-      );
+      const response = await readSetLocale(getPConnect, { useTimeZone: selectedTimezone });
 
       if (!didTimezonePreferenceSaveSucceed(response)) {
         throw new Error('Unable to persist timezone preference.');

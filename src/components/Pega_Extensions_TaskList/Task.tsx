@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { TaskCard } from './styles';
 import { Button, Checkbox, Icon, Input } from '@pega/cosmos-react-core';
 import type { Task } from './index';
+import { createPlatform } from '../shared/platform';
 
 interface TaskElementProps {
   task: Task;
@@ -37,17 +38,10 @@ const TaskElement = (props: TaskElementProps) => {
   const toggleStatus = () => {
     setStatus((prevStatus) => {
       // API call to update the backend
-      (window as any).PCore.getRestClient()
-        .invokeRestApi('updateDataObject', {
-          queryPayload: {
-            data_view_ID: 'D_TaskListSavable',
-          },
-          body: {
-            data: {
-              Id: task.Id, // Send the task Id as pyGUID
-              IsCompleted: !prevStatus, // Send the updated Status
-            },
-          },
+      createPlatform(getPConnect)
+        .dataObjects.update('D_TaskListSavable', {
+          Id: task.Id, // Send the task Id as pyGUID
+          IsCompleted: !prevStatus, // Send the updated Status
         })
         .catch(() => {});
       return !prevStatus;

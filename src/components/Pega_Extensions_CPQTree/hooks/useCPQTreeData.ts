@@ -14,6 +14,7 @@ import {
   extractProductOffer,
 } from '../utils';
 import { PROPERTY_NAMES, NODE_TYPES } from '../constants';
+import { createPlatform } from '../../shared/platform';
 
 /**
  * Configuration for data initialization
@@ -136,7 +137,7 @@ export const useCPQTreeData = (
     // Clear registered page list paths when dataPage changes to allow re-registration
     clearRegisteredPageListPaths();
 
-    const caseInstanceKey = getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+    const caseInstanceKey = createPlatform(getPConnect).caseInfo.key() as string;
 
     const loadObjects = (response: any) => {
       // Check if this is still the current request
@@ -212,8 +213,8 @@ export const useCPQTreeData = (
     abortControllerRef.current = abortController;
 
     console.log('loadObjects', dataPage);
-    (window as any).PCore.getDataApiUtils()
-      .getData(dataPage, { dataViewParameters: { caseInstanceKey } })
+    createPlatform(getPConnect)
+      .caseData.queryUnscoped(dataPage, { dataViewParameters: { caseInstanceKey } })
       .then((response: any) => {
         // Check if this is still the current request
         if (
@@ -271,9 +272,7 @@ export const useCPQTreeData = (
     async (updatedData?: any) => {
       if (updatedData !== null && updatedData !== undefined) {
         // Use the provided updated data directly
-        const caseInstanceKey = getPConnectRef
-          .current()
-          .getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+        const caseInstanceKey = createPlatform(getPConnectRef.current).caseInfo.key() as string;
         const cases: Array<CustomTreeNode> = [];
         const currentLoadTree = loadTreeRef.current;
         const currentChildrenPropertyName = childrenPropertyNameRef.current;
@@ -315,11 +314,9 @@ export const useCPQTreeData = (
       } else {
         console.log('reloadTree', dataPage);
         // Fallback: reload from data page if no data provided
-        const caseInstanceKey = getPConnectRef
-          .current()
-          .getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+        const caseInstanceKey = createPlatform(getPConnectRef.current).caseInfo.key() as string;
         try {
-          const response = await (window as any).PCore.getDataApiUtils().getData(dataPage, {
+          const response: any = await createPlatform(getPConnectRef.current).caseData.queryUnscoped(dataPage, {
             dataViewParameters: { caseInstanceKey },
           });
           if (response.data.data[0] !== null) {

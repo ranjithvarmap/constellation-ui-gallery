@@ -1,7 +1,11 @@
-import { withConfiguration, Status, type StatusProps } from '@pega/cosmos-react-core';
+import { withConfiguration, FormField, Status, type StatusProps } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
 
 type StatusBadgeProps = {
+  /** Field label, shown above the badge in a form. Details views draw it themselves (detailFVLItem). */
+  label?: string;
+  /** Set by the platform; DISPLAY_ONLY means a details view is drawing the label. */
+  displayMode?: 'DISPLAY_ONLY' | '';
   /**  The value to display in the status badge */
   inputProperty: string;
   /** Regex expression to match the Info status
@@ -37,6 +41,8 @@ const getStatusVariant = (value: string, statusesRegex: string[]): StatusProps['
 
 export const PegaExtensionsStatusBadge = (props: StatusBadgeProps) => {
   const {
+    label,
+    displayMode,
     inputProperty = '',
     infoStatus = '',
     warnStatus = '',
@@ -46,6 +52,13 @@ export const PegaExtensionsStatusBadge = (props: StatusBadgeProps) => {
   } = props;
   const statusesRegex = [infoStatus, warnStatus, successStatus, pendingStatus, urgentStatus];
 
-  return <Status variant={getStatusVariant(inputProperty, statusesRegex)}>{inputProperty}</Status>;
+  const badge = <Status variant={getStatusVariant(inputProperty, statusesRegex)}>{inputProperty}</Status>;
+  if (displayMode === 'DISPLAY_ONLY' || !label) return badge;
+
+  return (
+    <FormField label={label} labelAs='span'>
+      {badge}
+    </FormField>
+  );
 };
 export default withConfiguration(PegaExtensionsStatusBadge);

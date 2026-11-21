@@ -3,6 +3,7 @@
  */
 
 import { TREE_CONSTANTS, PROPERTY_NAMES, NODE_TYPES } from './constants';
+import { links, createPlatform } from '../shared/platform';
 
 /**
  * Creates a regex from a pattern (handles both string and RegExp)
@@ -172,11 +173,7 @@ export const generateLinkURL = (nodeClass: string, workId: string, caseInstanceK
     return '';
   }
 
-  return (window as any).PCore.getSemanticUrlUtils().getResolvedSemanticURL(
-    (window as any).PCore.getSemanticUrlUtils().getActions().ACTION_OPENWORKBYHANDLE,
-    { caseClassName: nodeClass },
-    { workID: workId },
-  );
+  return links.workUrl({ className: nodeClass, workId: workId });
 };
 
 /**
@@ -775,10 +772,9 @@ export const clearRegisteredPageListPaths = (): void => {
  * @param index - Optional index to use when calling addViewNode (defaults to 0)
  */
 export const addPageListNodeForPath = (path: string, getPConnect: any, index: number = 0): void => {
-  const PCore = (window as any).PCore;
-  if (!PCore || !PCore.getContextTreeManager || !getPConnect) {
-    return;
-  }
+  if (!getPConnect) return;
+  const { contextTree } = createPlatform(getPConnect);
+  if (!contextTree.available) return;
 
   // Check if this path has already been registered
   if (registeredPageListPaths.has(path)) {
@@ -809,13 +805,11 @@ export const addPageListNodeForPath = (path: string, getPConnect: any, index: nu
   // For root path (Tree), set target; for nested paths, target should be undefined
   console.log('addPageListNodeForPath', fullPath, pageName);
   const isRootPath = lastDotIndex < 0;
-  PCore.getContextTreeManager().addPageListNode(
-    getPConnect().getContextName(),
-    fullPath,
-    getPConnect().viewName,
-    pageName,
-
-    {
+  contextTree.registerPageList({
+    pageReference: fullPath,
+    viewName: getPConnect().viewName,
+    pageListName: pageName,
+    node: {
       target: isRootPath ? getPConnect().getTarget() : undefined,
       context: getPConnect().getContextName(),
       pageReference: fullPath,
@@ -828,13 +822,12 @@ export const addPageListNodeForPath = (path: string, getPConnect: any, index: nu
       referenceList: '@P ' + pageName,
       index: 1,
     },
-  );
+  });
 
-  PCore.getContextTreeManager().addViewNode(
-    getPConnect().getContextName(),
-    'caseInfo.content.' + path + `[${index}]`,
-    getPConnect().viewName,
-  );
+  contextTree.registerView({
+    pageReference: 'caseInfo.content.' + path + `[${index}]`,
+    viewName: getPConnect().viewName,
+  });
 };
 
 /**
@@ -965,10 +958,9 @@ const extractPagelistPathsFromPropertyPath = (propertyPath: string): Array<{ pat
  */
 export const addViewNodeForPropertyPath = (path: string, getPConnect: any): void => {
   console.log('addViewNodeForPropertyPath', path);
-  const PCore = (window as any).PCore;
-  if (!PCore || !PCore.getContextTreeManager || !getPConnect) {
-    return;
-  }
+  if (!getPConnect) return;
+  const { contextTree } = createPlatform(getPConnect);
+  if (!contextTree.available) return;
 
   // Check if this path has already been registered
   if (registeredPropertyPaths.has(path)) {
@@ -987,11 +979,7 @@ export const addViewNodeForPropertyPath = (path: string, getPConnect: any): void
   registeredPropertyPaths.add(path);
 
   // Add view node for the property path
-  PCore.getContextTreeManager().addViewNode(
-    getPConnect().getContextName(),
-    'caseInfo.content.' + path,
-    getPConnect().viewName,
-  );
+  contextTree.registerView({ pageReference: 'caseInfo.content.' + path, viewName: getPConnect().viewName });
 };
 
 /**
@@ -1310,82 +1298,20 @@ type LoadDetailsProps = {
 };
 export const loadDetails = async (props: LoadDetailsProps) => {
   const { id, classname, detailsDataPage, detailsViewName, getPConnect, nodeData } = props;
-  let myElem;
-  // Check if this is the first call for this view name
-  const isFirstCall = !loadedViewResources.has(detailsViewName);
+  const { caseData, views } = createPlatform(getPConnect);
 
-  if (isFirstCall) {
-    // First call: Make API call to get UI meta and update view resources
-    // But use tree data (not API response data) for the transient data
-    await (window as any).PCore.getDataApiUtils()
-      .getDataObjectView(detailsDataPage, detailsViewName, { caseInstanceKey: id })
-      .then(async (res: any) => {
-        const { fetchViewResources, updateViewResources } = (window as any).PCore.getViewResources();
-        await updateViewResources(res.data);
-        loadedViewResources.add(detailsViewName);
-
-        const transientItemID = getPConnect()
-          .getContainerManager()
-          .addTransientItem({
-            id: `${detailsViewName}${id}`,
-            data: {},
-          });
-        getPConnect()
-          .getContainerManager()
-          .updateTransientData({
-            transientItemID,
-            data: { content: nodeData },
-          });
-        const messageConfig = {
-          meta: fetchViewResources(detailsViewName, getPConnect(), classname),
-          options: {
-            contextName: transientItemID,
-            context: transientItemID,
-            pageReference: 'content',
-          },
-        };
-        messageConfig.meta.config.showLabel = false;
-        messageConfig.meta.config.pyID = id;
-        const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-
-        myElem = c11nEnv.getPConnect().createComponent(messageConfig.meta);
-      });
-  } else {
-    // Subsequent calls: Skip API call and updateViewResources, use tree data instead
-    const { fetchViewResources } = (window as any).PCore.getViewResources();
-
-    // Get or create transient item (addTransientItem handles existing items)
-    const transientItemID = getPConnect()
-      .getContainerManager()
-      .addTransientItem({
-        id: `${detailsViewName}${id}`,
-        data: {},
-      });
-
-    // Update transient data with the subtree copy
-    // This data comes from the tree, not from the API response
-    getPConnect()
-      .getContainerManager()
-      .updateTransientData({
-        transientItemID,
-        data: { content: nodeData },
-      });
-
-    // Fetch view resources (already loaded from first call, just fetch them)
-    const messageConfig = {
-      meta: fetchViewResources(detailsViewName, getPConnect(), classname),
-      options: {
-        contextName: transientItemID,
-        context: transientItemID,
-        pageReference: 'content',
-      },
-    };
-    messageConfig.meta.config.showLabel = false;
-    messageConfig.meta.config.pyID = id;
-    const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-
-    myElem = c11nEnv.getPConnect().createComponent(messageConfig.meta);
+  // First call for this view: fetch its UI metadata once and register it.
+  // The transient data always comes from the tree, never from that response.
+  if (!loadedViewResources.has(detailsViewName)) {
+    const res = await caseData.fetchDetailView(detailsDataPage, detailsViewName, { caseInstanceKey: id });
+    await views.addResources(res.data);
+    loadedViewResources.add(detailsViewName);
   }
 
-  return myElem;
+  return views.renderDetailView({
+    viewName: detailsViewName,
+    id,
+    className: classname,
+    data: { content: nodeData },
+  });
 };

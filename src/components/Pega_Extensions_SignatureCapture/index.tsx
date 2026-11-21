@@ -91,6 +91,7 @@ export const PegaExtensionsSignatureCapture = (props: SignatureCaptureProps) => 
       <Flex container={{ direction: 'column' }}>
         <FormField
           label={label}
+          labelAs='span'
           labelHidden={hideLabel}
           info={info}
           status={status}

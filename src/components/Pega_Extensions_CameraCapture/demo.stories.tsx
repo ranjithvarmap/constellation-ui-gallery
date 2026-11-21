@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsCameraCapture } from './index';
+import { installCameraCapturePlatform } from './demo.fixtures';
 
 export default {
   title: 'Widgets/Camera',
@@ -14,33 +15,13 @@ export default {
   },
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getConstants: () => {
-      return {
-        CASE_INFO: {
-          CASE_INFO: '',
-        },
-      };
-    },
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsCameraCapture>;
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
-
-    const props = {
-      ...args,
-      getPConnect: () => ({
-        getContextName: () => '',
-        getValue: () => '',
-      }),
-    };
-
-    return <PegaExtensionsCameraCapture {...props} />;
+    /* The shared platform double, rather than a hand-rolled window.PCore stub. */
+    const platform = installCameraCapturePlatform();
+    return <PegaExtensionsCameraCapture {...args} getPConnect={platform.getPConnect} />;
   },
   args: {
     buttonText: 'Capture with Camera',

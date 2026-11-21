@@ -14,6 +14,7 @@ import StyledPegaExtensionsExpandableTableWrapper from './styles';
 import * as caretDownIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/caret-down.icon';
 import * as caretRightIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/caret-right.icon';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 import getAllFields, {
   loadRowDetailView,
   getBasePageReference,
@@ -67,16 +68,7 @@ const RowDetailPanel = ({ rowIndex, detailViewName, embedDataRef, embedClass, ge
   }
 
   if (!detailContent) {
-    return (
-      <Progress
-        placement='inline'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='inline' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   return detailContent;
@@ -126,17 +118,12 @@ export const PegaExtensionsExpandableTable = (props: ExpandableTableProps) => {
         displayMode: 'DISPLAY_ONLY',
       },
     };
-    const messageConfig = {
+    const page = createPlatform(getPConnect).pages.at(buildRowPageReference(basePageRef, embedDataRef, rowIndex), {
       meta: fieldInput,
-      options: {
-        context: getPConnect().getContextName(),
-        pageReference: buildRowPageReference(basePageRef, embedDataRef, rowIndex),
-        referenceList: buildReferenceList(embedDataRef),
-        viewName: getPConnect().options.viewName,
-      },
-    };
-    const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-    return <td key={key}>{c11nEnv.getPConnect().createComponent(fieldInput)}</td>;
+      referenceList: buildReferenceList(embedDataRef),
+      viewName: getPConnect().options.viewName,
+    });
+    return <td key={key}>{page.render(fieldInput)}</td>;
   };
 
   useEffect(() => {
@@ -152,27 +139,17 @@ export const PegaExtensionsExpandableTable = (props: ExpandableTableProps) => {
       const { parentPath, listProperty } = getPageListRegistration(currentBasePageRef, listRef);
 
       /* New API added in 24.2 */
-      (window as any).PCore.getContextTreeManager().addPageListNode(
-        getPConnect().getContextName(),
-        parentPath,
-        getPConnect().meta.name,
-        listProperty,
-      );
+      createPlatform(getPConnect).contextTree.registerPageList({
+        pageReference: parentPath,
+        viewName: getPConnect().meta.name,
+        pageListName: listProperty,
+      });
 
       setNumRows(columnFields[0].value.length);
       columnFields.forEach((child: any) => {
-        if (
-          child.componentType &&
-          !(window as any).PCore.getComponentsRegistry().getLazyComponent(child.componentType)
-        ) {
-          (window as any).PCore.getAssetLoader()
-            .getLoader('component-loader')([child.componentType])
-            .then(() => {
-              setNumFields((prevCount) => prevCount + 1);
-            });
-        } else {
+        createPlatform(getPConnect).components.whenAvailable(child.componentType, () => {
           setNumFields((prevCount) => prevCount + 1);
-        }
+        });
       });
       setFields(columnFields);
     }
@@ -186,16 +163,7 @@ export const PegaExtensionsExpandableTable = (props: ExpandableTableProps) => {
   }, [numFields, fields]);
 
   if (loading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   const colSpan = fields.length + 1;

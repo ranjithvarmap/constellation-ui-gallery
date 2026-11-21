@@ -58,7 +58,7 @@ export const PegaExtensionsQRCode = (props: QRCodeCompProps) => {
   return (
     <StyledWrapper>
       <Flex container={{ direction: 'column', justify: 'center', alignItems: 'center' }}>
-        <FormField label={label} labelHidden={hideLabel} info={info} status={status} testId={testId}>
+        <FormField label={label} labelAs='span' labelHidden={hideLabel} info={info} status={status} testId={testId}>
           <FormControl ariaLabel={label}>
             {readOnly ? (
               <img alt='QR Code' src={outputValue} />

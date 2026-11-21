@@ -15,6 +15,7 @@ import StyledPegaExtensionsEditableTableLayoutWrapper from './styles';
 import * as trashIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/trash.icon';
 import * as plusIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/plus.icon';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 import getAllFields from './utils';
 
 registerIcon(plusIcon, trashIcon);
@@ -35,58 +36,39 @@ export const PegaExtensionsEditableTableLayout = (props: TableLayoutProps) => {
   // Get the inherited props from the parent to determine label settings
   const inheritedProps = { ...getPConnect().getInheritedProps() };
 
+  /* The platform calls happen once, here in the event handler. State updater
+     functions must stay pure, because React may call them more than once (it
+     does in development StrictMode), and they copy the value arrays rather
+     than mutate the ones the platform handed over. */
   const addRow = () => {
-    setNumRows((prevCount) => {
-      const messageConfig = {
+    createPlatform(getPConnect)
+      .pages.at('caseInfo.content', {
         meta: props,
-        options: {
-          context: getPConnect().getContextName(),
-          pageReference: 'caseInfo.content',
-          referenceList: `.${embedDataRef}`,
-          viewName: getPConnect().options.viewName,
-        },
-      };
-      const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-      c11nEnv.index = prevCount;
-      c11nEnv.getPConnect().getListActions().insert({}, prevCount);
+        referenceList: `.${embedDataRef}`,
+        viewName: getPConnect().options.viewName,
+        index: numRows,
+      })
+      .listActions.insert({}, numRows);
 
-      return prevCount + 1;
-    });
-    setFields((prevFields) => {
-      return prevFields.map((field: any) => {
-        const newField = { ...field };
-        // Add a new empty value
-        newField.value.push('');
-        return newField;
-      });
-    });
+    setNumRows(numRows + 1);
+    // Add a new empty value
+    setFields((prevFields) => prevFields.map((field: any) => ({ ...field, value: [...field.value, ''] })));
   };
 
   const deleteRow = (index: number) => {
-    setNumRows((prevCount) => {
-      const messageConfig = {
+    createPlatform(getPConnect)
+      .pages.at('caseInfo.content', {
         meta: props,
-        options: {
-          context: getPConnect().getContextName(),
-          pageReference: 'caseInfo.content',
-          referenceList: `.${embedDataRef}`,
-          viewName: getPConnect().options.viewName,
-        },
-      };
-      const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
+        referenceList: `.${embedDataRef}`,
+        viewName: getPConnect().options.viewName,
+      })
+      .listActions.deleteEntry(index);
 
-      c11nEnv.getPConnect().getListActions().deleteEntry(index);
-
-      return prevCount - 1;
-    });
-    setFields((prevFields) => {
-      return prevFields.map((field: any) => {
-        const newField = { ...field };
-        // Delete the value in index position
-        newField.value.splice(index, 1);
-        return newField;
-      });
-    });
+    setNumRows(numRows - 1);
+    // Delete the value in index position
+    setFields((prevFields) =>
+      prevFields.map((field: any) => ({ ...field, value: field.value.filter((_: unknown, i: number) => i !== index) })),
+    );
   };
 
   const genField = (field: any, index: number, key: string) => {
@@ -100,52 +82,46 @@ export const PegaExtensionsEditableTableLayout = (props: TableLayoutProps) => {
         displayMode: '',
       },
     };
-    const messageConfig = {
+    const page = createPlatform(getPConnect).pages.at(`caseInfo.content.${embedDataRef}[${index}]`, {
       meta: fieldInput,
-      options: {
-        context: getPConnect().getContextName(),
-        hasForm: true,
-        pageReference: `caseInfo.content.${embedDataRef}[${index}]`,
-        referenceList: `.${embedDataRef}`,
-        viewName: getPConnect().options.viewName,
-      },
-    };
-    const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
+      hasForm: true,
+      referenceList: `.${embedDataRef}`,
+      viewName: getPConnect().options.viewName,
+    });
 
-    return <td key={key}>{c11nEnv.getPConnect().createComponent(fieldInput)}</td>;
+    return <td key={key}>{page.render(fieldInput)}</td>;
   };
 
   useEffect(() => {
+    /* The effect can run more than once (StrictMode runs it twice in
+       development). Each run counts its loaded fields from zero, and a load
+       finishing after its run was cleaned up is not counted, so the count
+       always matches the fields. */
+    let active = true;
     const tmpFields = getAllFields(getPConnect);
     if (tmpFields && tmpFields[0] && tmpFields[0].value) {
+      setNumFields(0);
       setEmbedDataRef(tmpFields[0].pageref);
 
       /* New API added in 24.2 - not needed for 24.1 */
-      (window as any).PCore.getContextTreeManager().addPageListNode(
-        getPConnect().getContextName(),
-        'caseInfo.content',
-        getPConnect().meta.name,
-        tmpFields[0].pageref,
-      );
+      createPlatform(getPConnect).contextTree.registerPageList({
+        pageReference: 'caseInfo.content',
+        viewName: getPConnect().meta.name,
+        pageListName: tmpFields[0].pageref,
+      });
 
       setNumRows(tmpFields[0].value.length);
       /* This logic will load the DX Component if it is not already loaded */
       tmpFields.forEach((child: any) => {
-        if (
-          child.componentType &&
-          !(window as any).PCore.getComponentsRegistry().getLazyComponent(child.componentType)
-        ) {
-          (window as any).PCore.getAssetLoader()
-            .getLoader('component-loader')([child.componentType])
-            .then(() => {
-              setNumFields((prevCount) => prevCount + 1);
-            });
-        } else {
-          setNumFields((prevCount) => prevCount + 1);
-        }
+        createPlatform(getPConnect).components.whenAvailable(child.componentType, () => {
+          if (active) setNumFields((prevCount) => prevCount + 1);
+        });
       });
       setFields(tmpFields);
     }
+    return () => {
+      active = false;
+    };
   }, [getPConnect]);
 
   useEffect(() => {
@@ -157,16 +133,7 @@ export const PegaExtensionsEditableTableLayout = (props: TableLayoutProps) => {
   }, [numFields, fields]);
 
   if (loading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   return (

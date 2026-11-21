@@ -1,5 +1,6 @@
 import { withConfiguration, Flex, Button } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type ActionableButtonProps = {
   label: string;
@@ -11,9 +12,8 @@ type ActionableButtonProps = {
 export const PegaExtensionsActionableButton = (props: ActionableButtonProps) => {
   const { getPConnect, label, value, localAction } = props;
   if (value && localAction) {
-    const availableActions =
-      getPConnect().getValue((window as any).PCore.getConstants().CASE_INFO.AVAILABLEACTIONS) || [];
-    const targetAction = availableActions.find((action: { ID: string }) => action.ID === localAction);
+    const availableActions = createPlatform(getPConnect).caseInfo.availableActions();
+    const targetAction = availableActions.find((action) => action.ID === localAction);
     const localizedLabel =
       getPConnect().getContainerName() === 'primary'
         ? getPConnect().getLocalizedValue(

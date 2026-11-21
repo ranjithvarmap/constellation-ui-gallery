@@ -20,6 +20,7 @@ import {
 import StyledEventWrapper from './styles';
 import * as plusIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/plus.icon';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(plusIcon);
 
@@ -140,11 +141,7 @@ export const PegaExtensionsCalendar = (props: CalendarProps) => {
       isdayGrid = false;
     }
     const eventDateStr = `${obj[startTimeProperty].substring(0, 5)} - ${obj[endTimeProperty].substring(0, 5)}`;
-    const linkURL = (window as any).PCore.getSemanticUrlUtils().getResolvedSemanticURL(
-      (window as any).PCore.getSemanticUrlUtils().getActions().ACTION_OPENWORKBYHANDLE,
-      { caseClassName: obj.pxObjClass },
-      { workID: obj.pyID },
-    );
+    const linkURL = createPlatform(getPConnect).links.workUrl({ className: obj.pxObjClass, workId: obj.pyID });
     const linkEl = (
       <Link
         href={linkURL}
@@ -209,8 +206,8 @@ export const PegaExtensionsCalendar = (props: CalendarProps) => {
   };
 
   const loadEvents = () => {
-    (window as any).PCore.getDataApiUtils()
-      .getData(dataPage, {})
+    createPlatform(getPConnect)
+      .caseData.queryUnscoped(dataPage, {})
       .then((response: any) => {
         if (response.data.data !== null) {
           const tmpevents: Array<Event> = [];
@@ -244,20 +241,14 @@ export const PegaExtensionsCalendar = (props: CalendarProps) => {
 
   /* Subscribe to changes to the assignment case */
   useEffect(() => {
-    (window as any).PCore.getPubSubUtils().subscribe(
-      (window as any).PCore.getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION,
+    return createPlatform(getPConnect).events.on(
+      'assignmentSubmission',
       () => {
         /* If an assignment is updated - force a reload of the events */
         loadEvents();
       },
-      'ASSIGNMENT_SUBMISSION',
+      { id: 'ASSIGNMENT_SUBMISSION' },
     );
-    return () => {
-      (window as any).PCore.getPubSubUtils().unsubscribe(
-        (window as any).PCore.getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION,
-        'ASSIGNMENT_SUBMISSION',
-      );
-    };
   }, []);
 
   useEffect(() => {

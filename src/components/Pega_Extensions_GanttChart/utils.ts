@@ -3,6 +3,7 @@ import type { Task as GTRTask, StylingOption, ViewMode as GTRViewModeType } from
 import { ViewMode as GTRViewMode } from 'gantt-task-react';
 import type { TaskType } from 'gantt-task-react/dist/types/public-types';
 import type { DefaultTheme } from 'styled-components';
+import { createPlatform } from '../shared/platform';
 
 export type ViewModeType = 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Yearly';
 
@@ -31,6 +32,7 @@ export type GanttChartProps = {
 
 /** Loads data for Gantt chart from a datapage */
 export const loadGanttData = async (
+  getPConnect: any,
   dataPage: string,
   categoryFieldName: string,
   parentFieldName: string,
@@ -39,7 +41,7 @@ export const loadGanttData = async (
   endDateFieldName: string,
   progressFieldName: string,
 ) => {
-  const response = await (window as any).PCore.getDataApiUtils().getData(dataPage, {});
+  const response: any = await createPlatform(getPConnect).caseData.queryUnscoped(dataPage, {});
   const mappedTasks: Array<Task> = [];
   if (response.data.data !== null) {
     response.data.data.forEach((item: any) => {
@@ -149,37 +151,12 @@ type LoadDetailsProps = {
 };
 export const loadDetails = async (props: LoadDetailsProps) => {
   const { id, classname, detailsDataPage, detailsViewName, getPConnect } = props;
-  let myElem;
-  await (window as any).PCore.getDataApiUtils()
-    .getDataObjectView(detailsDataPage, detailsViewName, { pyID: id })
-    .then(async (res: any) => {
-      const { fetchViewResources, updateViewResources } = (window as any).PCore.getViewResources();
-      await updateViewResources(res.data);
-      const transientItemID = getPConnect()
-        .getContainerManager()
-        .addTransientItem({
-          id: `${detailsViewName}${id}`,
-          data: {},
-        });
-      getPConnect().getContainerManager().updateTransientData({
-        transientItemID,
-        data: res.data.data.dataInfo,
-      });
-      const messageConfig = {
-        meta: fetchViewResources(detailsViewName, getPConnect(), classname),
-        options: {
-          contextName: transientItemID,
-          context: transientItemID,
-          pageReference: 'content',
-        },
-      };
-      messageConfig.meta.config.showLabel = false;
-      messageConfig.meta.config.pyID = id;
-      const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-
-      myElem = c11nEnv.getPConnect().createComponent(messageConfig.meta);
-    });
-  return myElem;
+  return createPlatform(getPConnect).views.loadDetailView({
+    dataPage: detailsDataPage,
+    viewName: detailsViewName,
+    id,
+    className: classname,
+  });
 };
 
 export type UpdateItemDetails = {
@@ -195,15 +172,6 @@ export type UpdateItemDetails = {
 export const updateItemDetails = async (props: UpdateItemDetails) => {
   const { getPConnect, item, updatedFieldValueList } = props;
   const { pzInsKey } = item.extendedProps;
-  const context = getPConnect().getContextName();
-
-  const response = await (window as any).PCore.getDataApiUtils().getCaseEditLock(pzInsKey, context);
-
-  const payload: any = { [pzInsKey]: updatedFieldValueList };
-  return await (window as any).PCore.getDataApiUtils().updateCaseEditFieldsData(
-    pzInsKey,
-    payload,
-    response.headers.etag,
-    context,
-  );
+  /* Takes the edit lock, then patches with its etag. */
+  await createPlatform(getPConnect).caseData.updateFields(pzInsKey, updatedFieldValueList);
 };

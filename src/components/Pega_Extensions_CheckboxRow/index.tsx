@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, type MouseEvent } from 'react';
 import { withConfiguration, Checkbox, Text } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
 import { updateAllSiblingCheckboxes, updateBooleanFieldsOnPage } from './utils';
+import { createPlatform } from '../shared/platform';
 
 export type CheckboxRowProps = {
   getPConnect?: any;
@@ -71,8 +72,7 @@ export const PegaExtensionsCheckboxRow = (props: CheckboxRowProps) => {
     actions.updateFieldValue(propName, checked);
     hasValueChange.current = true;
 
-    const contextName = pConn.getContextName();
-    const storeData = (window as any).PCore.getStore().getState().data?.[contextName];
+    const storeData = createPlatform(() => pConn).store.contextData();
     if (!storeData) return;
 
     if (selectAllProperty) {

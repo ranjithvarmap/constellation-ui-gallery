@@ -16,6 +16,7 @@ import {
 import getAllFields from './utils';
 import { MainContent, FixPopover } from './styles';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 export interface DynamicHierarchicalFormProps {
   /** Heading for this view */
@@ -96,16 +97,10 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
   };
 
   const updateProducts = (index: number, IsSelected: boolean) => {
-    const messageConfig = {
+    const actionsApi = createPlatform(getPConnect).pages.at(`caseInfo.content.${productRef.current}[${index}]`, {
       meta: props,
-      options: {
-        context: getPConnect().getContextName(),
-        pageReference: `caseInfo.content.${productRef.current}[${index}]`,
-        target: getPConnect().getTarget(),
-      },
-    };
-    const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-    const actionsApi = c11nEnv.getPConnect().getActionsApi();
+      target: getPConnect().getTarget(),
+    }).actions;
     actionsApi?.updateFieldValue('.IsSelected', IsSelected);
     const tmpProducts = products.current.map((product, i) => {
       if (i === index) return { ...product, IsSelected };
@@ -172,14 +167,6 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
   }, [validatemessage, status]);
 
   useEffect(() => {
-    /* In 24.2, we need to initialize the context tree manager */
-    (window as any).PCore.getContextTreeManager().addPageListNode(
-      getPConnect().getContextName(),
-      'caseInfo.content',
-      getPConnect().meta.name,
-      productRef.current,
-    );
-
     const SelectedProducts: any = getAllFields(0, getPConnect);
     const tmpFields: any = getAllFields(1, getPConnect);
     if (SelectedProducts.length !== 1 || !SelectedProducts[0]?.authorContext || tmpFields.length === 0) {
@@ -188,9 +175,16 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
 
     const tmpTabs: Array<any> = [];
     const tmpItems: Array<MenuItemProps> = [];
-    const context = getPConnect().getContextName();
-    const content: any = (window as any).PCore.getStore().getState().data?.[context]?.caseInfo?.content;
+    const content: any = createPlatform(getPConnect).store.contextData()?.caseInfo?.content;
     productRef.current = SelectedProducts[0].authorContext.substring(1);
+
+    /* In 24.2, we need to initialize the context tree manager. Registered only
+       once the list's name is known: before, this ran first and registered ''. */
+    createPlatform(getPConnect).contextTree.registerPageList({
+      pageReference: 'caseInfo.content',
+      viewName: getPConnect().meta.name,
+      pageListName: productRef.current,
+    });
     productSelectionRequiredRef.current = false;
     if (SelectedProducts[0]?.inheritedProps?.length > 0) {
       for (const val of SelectedProducts[0].inheritedProps) {
@@ -215,22 +209,17 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
       }
       if (fieldId < tmpFields.length) {
         /* Match was made */
-        const metadata = (window as any).PCore.getViewResources().fetchViewResources(
+        const metadata = createPlatform(getPConnect).views.metadata(
           tmpFields[fieldId].name,
-          getPConnect(),
           tmpFields[fieldId].ruleClass,
         );
-        const messageConfig = {
-          meta: metadata,
-          options: {
+        const myElem = createPlatform(getPConnect)
+          .pages.at(`caseInfo.content${tmpFields[fieldId].context}`, {
+            meta: metadata,
             contextName: getPConnect().getContextName(),
-            context: getPConnect().getContextName(),
-            pageReference: `caseInfo.content${tmpFields[fieldId].context}`,
             target: getPConnect().getTarget(),
-          },
-        };
-        const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-        const myElem = c11nEnv.getPConnect().createComponent(messageConfig.meta);
+          })
+          .render(metadata);
         tmpTabs.push({
           name: pyLabel,
           id,
@@ -259,14 +248,7 @@ export const PegaExtensionsDynamicHierarchicalForm = (props: DynamicHierarchical
     return (
       <Flex container={{ pad: 2 }} height={10}>
         <Flex item={{ grow: 1, alignSelf: 'auto' }}>
-          <Progress
-            placement='block'
-            message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-              'Loading content...',
-              'Generic',
-              '@BASECLASS!GENERIC!PYGENERICFIELDS',
-            )}
-          />
+          <Progress placement='block' message={createPlatform(getPConnect).text.loadingContent()} />
         </Flex>
       </Flex>
     );

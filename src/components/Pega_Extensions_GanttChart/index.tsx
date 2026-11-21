@@ -42,6 +42,7 @@ import {
   loadDetails,
   updateItemDetails,
 } from './utils';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(plusIcon, pencilIcon, timesIcon);
 
@@ -139,6 +140,7 @@ export const PegaExtensionsGanttChart = (props: GanttChartProps) => {
   const initializeGanttData = useCallback(async () => {
     setLoaderTasks(true);
     const data = await loadGanttData(
+      getPConnect,
       dataPage,
       categoryFieldName,
       parentFieldName,
@@ -151,6 +153,7 @@ export const PegaExtensionsGanttChart = (props: GanttChartProps) => {
     setLoaderTasks(false);
     return data;
   }, [
+    getPConnect,
     dataPage,
     categoryFieldName,
     parentFieldName,
@@ -275,22 +278,16 @@ export const PegaExtensionsGanttChart = (props: GanttChartProps) => {
 
   /* Subscribe to changes to the assignment case */
   useEffect(() => {
-    (window as any).PCore.getPubSubUtils().subscribe(
-      (window as any).PCore.getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION,
+    return createPlatform(getPConnect).events.on(
+      'assignmentSubmission',
       async () => {
         /* If an assignment is updated - force a reload of the events */
         setLoaderTasks(true);
         setTasks(await initializeGanttData());
         setLoaderTasks(false);
       },
-      'ASSIGNMENT_SUBMISSION',
+      { id: 'ASSIGNMENT_SUBMISSION' },
     );
-    return () => {
-      (window as any).PCore.getPubSubUtils().unsubscribe(
-        (window as any).PCore.getEvents().getCaseEvent().ASSIGNMENT_SUBMISSION,
-        'ASSIGNMENT_SUBMISSION',
-      );
-    };
   }, [initializeGanttData]);
 
   useEffect(() => {
@@ -321,11 +318,7 @@ export const PegaExtensionsGanttChart = (props: GanttChartProps) => {
         <ProgressComponent
           visible={loaderTasks}
           placement='local'
-          message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-            'Loading content...',
-            'Generic',
-            '@BASECLASS!GENERIC!PYGENERICFIELDS',
-          )}
+          message={createPlatform(getPConnect).text.loadingContent()}
         />
         {!loaderTasks && tasks?.length === 0 && <EmptyState />}
         {tasks?.length > 0 && (
@@ -399,11 +392,7 @@ export const PegaExtensionsGanttChart = (props: GanttChartProps) => {
                     <ProgressComponent
                       visible={loaderDetails}
                       placement='local'
-                      message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-                        'Loading content...',
-                        'Generic',
-                        '@BASECLASS!GENERIC!PYGENERICFIELDS',
-                      )}
+                      message={createPlatform(getPConnect).text.loadingContent()}
                     />
                     {!details && <EmptyState />}
                     {details}

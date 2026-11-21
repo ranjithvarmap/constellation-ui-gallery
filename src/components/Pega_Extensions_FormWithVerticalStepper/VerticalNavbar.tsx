@@ -15,6 +15,7 @@ import {
   VerticalNavbarWrapper,
 } from './styles';
 import type { Step, VerticalNavbarProps } from './types';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(checkIcon, moreIcon);
 
@@ -76,7 +77,7 @@ export default function VerticalNavbar({ getPConnect }: VerticalNavbarProps) {
     if (step.visited_status === 'current') return;
 
     // Validate the form before navigating to another step
-    if ((window as any).PCore.getFormUtils().isFormValid(context, pageReference)) {
+    if (createPlatform(getPConnect).forms.isValid(context, pageReference)) {
       // Navigate to the selected step
       getPConnect().getActionsApi().navigateToStep(step.ID, context);
     }

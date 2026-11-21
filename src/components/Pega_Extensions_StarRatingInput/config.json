@@ -66,11 +66,6 @@
             "visibility": "(!readOnly = true)",
             "properties": [
                 {
-                    "name": "placeholder",
-                    "label": "Placeholder",
-                    "format": "TEXT"
-                },
-                {
                     "name": "helperText",
                     "label": "Helper text",
                     "format": "TEXT"

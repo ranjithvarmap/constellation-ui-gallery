@@ -228,6 +228,7 @@ export const PegaExtensionsStarRatingInput = (props: StarRatingInputProps) => {
     <Flex container={{ direction: 'row' }} as={StyledFlexWrapper}>
       <FormField
         label={label}
+        labelAs='span'
         labelHidden={hideLabel}
         info={info}
         status={status}

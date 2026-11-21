@@ -1,4 +1,4 @@
-import { withConfiguration } from '@pega/cosmos-react-core';
+import { withConfiguration, FormField } from '@pega/cosmos-react-core';
 import {
   MOUSE_ACTIVATION,
   SideBySideMagnifier,
@@ -11,6 +11,12 @@ import LightboxImage from './LightboxImage';
 
 export type PegaExtensionsImageMagnifyProps = {
   value: string;
+  /** Field label, shown above the image in a form. Details views draw it themselves (detailFVLItem). */
+  label?: string;
+  /** Set by the platform; DISPLAY_ONLY means a details view is drawing the label. */
+  displayMode?: 'DISPLAY_ONLY' | '';
+  /** Rendered as data-testid on the element wrapping the image. */
+  testId?: string;
 
   /**
    * Width selection - if set to widthpx, you need to configure customWidth
@@ -131,6 +137,9 @@ export type PegaExtensionsImageMagnifyProps = {
 export const PegaExtensionsImageMagnify = (props: PegaExtensionsImageMagnifyProps) => {
   const {
     value = '',
+    label,
+    displayMode,
+    testId,
     magnifyMode = 'magSideBySide',
     magnifyTrigger = 'magTriggerHover',
     fillAvailableSpace = false,
@@ -155,8 +164,19 @@ export const PegaExtensionsImageMagnify = (props: PegaExtensionsImageMagnifyProp
   } = props;
 
   if (!value) return null;
+
+  const withLabel = (image: JSX.Element) => {
+    const wrapped = <div data-testid={testId}>{image}</div>;
+    if (displayMode === 'DISPLAY_ONLY' || !label) return wrapped;
+    return (
+      <FormField label={label} labelAs='span'>
+        {wrapped}
+      </FormField>
+    );
+  };
+
   if (magnifyMode === 'lightbox') {
-    return <LightboxImage {...props} />;
+    return withLabel(<LightboxImage {...props} />);
   }
 
   // @ts-ignore
@@ -166,7 +186,7 @@ export const PegaExtensionsImageMagnify = (props: PegaExtensionsImageMagnifyProp
   } else if (magnifyTrigger === 'magTriggerDoubleClick') {
     magTrigger = MOUSE_ACTIVATION.DOUBLE_CLICK;
   }
-  return (
+  return withLabel(
     <>
       {magnifyMode === 'magAdvanced' ? (
         <MagnifierContainer>
@@ -209,7 +229,7 @@ export const PegaExtensionsImageMagnify = (props: PegaExtensionsImageMagnifyProp
           mouseActivation={magTrigger}
         />
       )}
-    </>
+    </>,
   );
 };
 

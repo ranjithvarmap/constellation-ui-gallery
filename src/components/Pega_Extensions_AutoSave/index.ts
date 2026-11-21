@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 type AutoSaveProps = {
   propertyName: string;
@@ -16,57 +17,24 @@ export const PegaExtensionsAutoSave = (props: AutoSaveProps) => {
       /* Get the current case etag */
       const etag = pConn.getValue('caseInfo.headers.etag');
 
-      const assignmentID = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.ASSIGNMENT_ID);
-      const actionID = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.ACTIVE_ACTION_ID)
-        ? pConn.getValue((window as any).PCore.getConstants().CASE_INFO.ACTIVE_ACTION_ID)
-        : pConn.getValue((window as any).PCore.getConstants().CASE_INFO.ASSIGNMENTACTION_ID);
+      const caseInfo = createPlatform(() => pConn).caseInfo;
+      const assignmentID = caseInfo.assignmentId();
+      const actionID = caseInfo.actionId();
 
-      /* Payload to resolve dx api */
-      const payload = {
-        queryPayload: {
-          assignmentID,
-          actionID,
-        },
-        body: {
-          content: {} as Record<string, any>,
-        },
-        headers: {
-          /* etag as part of header */
-          'if-match': etag,
-        },
-      };
+      const content: Record<string, any> = {};
       const lastSeparator = propertyName.lastIndexOf('.');
-      payload.body.content[propertyName.substring(lastSeparator + 1)] = pConn.getValue(propertyName);
+      content[propertyName.substring(lastSeparator + 1)] = pConn.getValue(propertyName);
 
-      /* Triggers save dx api */
-      (window as any).PCore.getRestClient()
-        .invokeRestApi('save', payload)
-        .then((response: any) => {
-          /* Upon successful, update the latest etag. */
-          const updatedEtag = response.headers.etag;
-          (window as any).PCore.getContainerUtils().updateCaseContextEtag(pConn.getContextName(), updatedEtag);
-        });
+      /* Saves the field, then stores the etag the save returns. */
+      createPlatform(() => pConn).caseData.saveAssignment({
+        assignmentId: assignmentID,
+        actionId: actionID,
+        etag,
+        content,
+      });
     };
-    const subId = Date.now();
-    /* Register field change event. */
-    (window as any).PCore.getCascadeManager().registerFields(
-      pConn.getContextName(),
-      pConn.getPageReference(),
-      [propertyName],
-      saveAssignment,
-      subId,
-    );
-
-    /* Unregister fields */
-    return () => {
-      (window as any).PCore.getCascadeManager().unRegisterFields(
-        pConn.getContextName(),
-        pConn.getPageReference(),
-        [propertyName],
-        saveAssignment,
-        subId,
-      );
-    };
+    /* Save on every change to the field; the returned teardown unregisters it. */
+    return createPlatform(() => pConn).fields.onChange([propertyName], saveAssignment);
   }, [pConn, propertyName]);
 
   if (!propertyName) return null;

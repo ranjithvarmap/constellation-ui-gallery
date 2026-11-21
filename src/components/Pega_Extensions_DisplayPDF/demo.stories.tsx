@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsDisplayPDF, DisplayMode } from './index';
+import { installDisplayPdfPlatform } from './demo.fixtures';
 import { useState, useEffect } from 'react';
 
 export default {
@@ -64,50 +65,6 @@ const getBinary = async () => {
   }
 };
 
-const setPCore = (url: string) => {
-  (window as any).PCore = {
-    getLocaleUtils: () => {
-      return {
-        getLocaleValue: (val: string) => {
-          return val;
-        },
-      };
-    },
-    getDataApiUtils: () => {
-      return {
-        getData: () => {
-          return Promise.resolve({
-            data: {
-              data: [
-                {
-                  pxObjClass: 'Link-Attachment',
-                  pyLabel: 'File #1',
-                  pyContext: url,
-                },
-                {
-                  pxObjClass: 'Link-Attachment',
-                  pyLabel: 'File #2',
-                  pyContext: url,
-                },
-                {
-                  pxObjClass: 'Link-Attachment',
-                  pyLabel: 'File #3',
-                  pyContext: url,
-                },
-              ],
-            },
-          });
-        },
-      };
-    },
-    getConstants: () => {
-      return {
-        CASE_INFO: {},
-      };
-    },
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsDisplayPDF>;
 
 export const Default: Story = {
@@ -119,23 +76,13 @@ export const Default: Story = {
         const fetchData = async () => {
           const value: any = await getBinary();
           setValue(value);
-          setPCore(value);
         };
         fetchData();
       }, []);
 
-      const props = {
-        ...args,
-        value,
-        getPConnect: () => {
-          return {
-            getContextName: () => '',
-            getValue: () => 'C-123',
-          };
-        },
-      };
-
-      return <PegaExtensionsDisplayPDF {...{ ...props, value: value || '' }} />;
+      /* The shared platform double, rather than a hand-rolled window.PCore stub. */
+      const platform = installDisplayPdfPlatform(value || '');
+      return <PegaExtensionsDisplayPDF {...args} value={value || ''} getPConnect={platform.getPConnect} />;
     };
 
     return <Wrapper />;

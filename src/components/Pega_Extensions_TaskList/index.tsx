@@ -13,6 +13,7 @@ import {
 import { Container, StyledAddTask } from './styles';
 import TaskElement from './Task';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 // Interface for props
 export type PegaExtensionsTaskListProps = {
@@ -66,12 +67,12 @@ export const PegaExtensionsTaskList = (props: PegaExtensionsTaskListProps) => {
     setIsLoading(true);
     try {
       const pConn = getPConnect();
-      const CaseInstanceKey = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+      const CaseInstanceKey = createPlatform(() => pConn).caseInfo.key();
       const payload = {
         dataViewParameters: [{ pyID: CaseInstanceKey }],
       };
-      (window as any).PCore.getDataApiUtils()
-        .getData(dataPage, payload, pConn.getContextName())
+      createPlatform(() => pConn)
+        .caseData.query(dataPage, payload)
         .then((response: any) => {
           if (response.data.data !== null) {
             setIsLoading(false);
@@ -93,16 +94,7 @@ export const PegaExtensionsTaskList = (props: PegaExtensionsTaskListProps) => {
     return <Banner variant='urgent' messages={[error]} />;
   }
   if (isLoading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
   return (
     <Card>

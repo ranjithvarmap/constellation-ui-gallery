@@ -29,6 +29,7 @@
     "fix:format": "prettier --color --loglevel warn -w .",
     "fix:pkg": "sort-package-json package.json packages/*/package.json",
     "fix:styles": "stylelint --fix \"./**/*.@(js|jsx|ts|tsx)\"",
+    "generate": "ts-node -P tools/generator/tsconfig.json tools/generator/cli.ts",
     "help": "custom-dx-components showHelp",
     "importComponent": "custom-dx-components importComponent",
     "importLibVersion": "custom-dx-components importArchive",
@@ -48,6 +49,7 @@
     "restoreLibVersion": "custom-dx-components restore",
     "setPermanent": "custom-dx-components setPermanent",
     "showStatus": "custom-dx-components showStatus",
+    "snapshot": "ts-node -P tools/snapshot/tsconfig.json tools/snapshot/cli.ts",
     "start": "storybook dev --port 6006",
     "startDevServer": "custom-dx-components startDevServer",
     "storeLibVersion": "custom-dx-components storeComponents",
@@ -132,6 +134,7 @@
     "storybook": "^10.4.6",
     "stylelint": "17.13.0",
     "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1"
   },

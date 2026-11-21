@@ -23,6 +23,8 @@ import {
 export interface PegaExtensionsJapaneseInputProps extends InputProps, TestIdProp {
   // If any, enter additional props that only exist on TextInput here
   hasSuggestions?: boolean;
+  /** Helper text from the property panel's Input settings. */
+  helperText?: string;
   hiraganaToKatakana: boolean;
   fullToHalf: boolean;
   lowerToUpper: boolean;
@@ -57,6 +59,7 @@ export const PegaExtensionsJapaneseInput: FC<PegaExtensionsJapaneseInputProps> =
   label,
   labelHidden,
   info,
+  helperText,
   hasSuggestions = false,
   hiraganaToKatakana = false,
   fullToHalf = false,
@@ -141,7 +144,7 @@ export const PegaExtensionsJapaneseInput: FC<PegaExtensionsJapaneseInputProps> =
       type='text'
       label={label}
       labelHidden={labelHidden}
-      info={errorMessage || info}
+      info={errorMessage || helperText || info}
       value={inputValue}
       status={status}
       onChange={handleChange}

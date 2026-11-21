@@ -10,6 +10,7 @@ import {
 } from '@pega/cosmos-react-core';
 
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 import { useRef, useState, useEffect } from 'react';
 import StyledList from './styles';
 
@@ -105,12 +106,12 @@ export const PegaExtensionsDisplayPDF = (props: DisplayPDFProps) => {
     if (dataPage && getPConnect) {
       const pConn = getPConnect();
 
-      const CaseInstanceKey = pConn.getValue((window as any).PCore.getConstants().CASE_INFO.CASE_INFO_ID);
+      const CaseInstanceKey = createPlatform(() => pConn).caseInfo.key();
       const payload = {
         dataViewParameters: [{ caseInstanceKey: CaseInstanceKey }],
       };
-      (window as any).PCore.getDataApiUtils()
-        .getData(dataPage, payload, pConn.getContextName())
+      createPlatform(() => pConn)
+        .caseData.query(dataPage, payload)
         .then((response: any) => {
           if (response.data.data !== null) {
             setPdfFiles(response.data.data);
@@ -148,7 +149,7 @@ export const PegaExtensionsDisplayPDF = (props: DisplayPDFProps) => {
     const blob = new Blob([buf], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     return (
-      <FormField label={label} labelHidden={hideLabel}>
+      <FormField label={label} labelAs='span' labelHidden={hideLabel}>
         <FormControl ariaLabel={label}>
           <iframe
             name={label}
@@ -163,16 +164,7 @@ export const PegaExtensionsDisplayPDF = (props: DisplayPDFProps) => {
   }
 
   if (loading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   return (

@@ -4,6 +4,7 @@ import styled, { css } from 'styled-components';
 import { Link, Icon, registerIcon, Text, StyledText, StyledLink } from '@pega/cosmos-react-core';
 import * as userIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/user.icon';
 import * as storeIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/store.icon';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(userIcon, storeIcon);
 const Node = styled.div(({ theme }: { theme: any }) => {
@@ -56,11 +57,7 @@ const renderNode = (props: RenderNodeProps) => {
   const { type, key, objClass, id, label, getPConnect, theme } = props;
   let icon = 'user';
   if (type === 'Corporation') icon = 'store';
-  const linkURL = (window as any).PCore.getSemanticUrlUtils().getResolvedSemanticURL(
-    (window as any).PCore.getSemanticUrlUtils().getActions().ACTION_OPENWORKBYHANDLE,
-    { caseClassName: objClass },
-    { workID: id },
-  );
+  const linkURL = createPlatform(getPConnect).links.workUrl({ className: objClass, workId: id });
   const linkEl =
     objClass && key && linkURL ? (
       <Link

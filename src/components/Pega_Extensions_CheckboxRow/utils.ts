@@ -1,3 +1,5 @@
+import { createPlatform } from '../shared/platform';
+
 // Helper: safely access nested object properties with optional array indices like Section[0]
 export const getNestedValue = (obj: any, path: string) => {
   if (!obj || !path) return undefined;
@@ -69,12 +71,11 @@ export const updateAllSiblingCheckboxes = (config: {
   const forEachRow = (cb: (rowPageRef: string, actions: any) => void) => {
     for (let i = 0; i < embeddedArray.length; i += 1) {
       const rowPageRef = `${embeddedPageName}[${i}]`;
-      const messageConfig = {
+      const actions = createPlatform(() => pConn).pages.at(rowPageRef, {
         meta: { config: { context: contextName } },
-        options: { context: contextName, pageReference: rowPageRef, target },
-      };
-      const c11nEnv = (window as any).PCore.createPConnect(messageConfig);
-      const actions = c11nEnv?.getPConnect()?.getActionsApi();
+        context: contextName,
+        target,
+      }).actions;
       if (actions) cb(rowPageRef, actions);
     }
   };

@@ -32,12 +32,12 @@ This document describes the implementation as shipped in `version: 4.0.1` (see [
 
 The component is designed to run inside a Pega Constellation runtime where the global `window.PCore` API exists.
 
-Key PCore dependencies:
+Key platform dependencies, all reached through the shared facade (`createPlatform(getPConnect)` in `src/components/shared/platform`), never `window.PCore` directly:
 
-- `PCore.getDataApiUtils().getData(dataPage, payload)` for loading and saving.
-- `PCore.getContextTreeManager()` for pagelist + view node registration.
-- `PCore.createPConnect(messageConfig)` and `getPConnect()` for dispatching store updates.
-- `PCore.getViewResources()` and `getDataObjectView()` for details panel view loading.
+- `caseData.queryUnscoped(dataPage, payload)` for loading and saving the tree.
+- `contextTree.registerPageList` / `contextTree.registerView` for pagelist + view node registration.
+- `pages.at(pageReference, …).actions` for dispatching field updates to the store.
+- `caseData.fetchDetailView`, `views.addResources` and `views.renderDetailView` for details panel view loading.
 
 In Storybook, `demo.stories.tsx` provides a lightweight `window.PCore` mock so the component can render and basic interactions can be exercised without a running Infinity server.
 

@@ -21,6 +21,7 @@ import getAllFields from './utils';
 
 import * as checkIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/check.icon';
 import * as timesIcon from '@pega/cosmos-react-core/lib/components/Icon/icons/times.icon';
+import { createPlatform } from '../shared/platform';
 
 registerIcon(checkIcon, timesIcon);
 
@@ -103,18 +104,9 @@ export const PegaExtensionsCompareTableLayout = (props: TableLayoutProps) => {
     if (tmpFields && tmpFields[0] && tmpFields[0].value) {
       setNumCols(tmpFields[0].value.length);
       tmpFields.forEach((child: any) => {
-        if (
-          child.componentType &&
-          !(window as any).PCore.getComponentsRegistry().getLazyComponent(child.componentType)
-        ) {
-          (window as any).PCore.getAssetLoader()
-            .getLoader('component-loader')([child.componentType])
-            .then(() => {
-              setNumFields((prevCount) => prevCount + 1);
-            });
-        } else {
+        createPlatform(getPConnect).components.whenAvailable(child.componentType, () => {
           setNumFields((prevCount) => prevCount + 1);
-        }
+        });
         if (typeof selectionProperty !== 'undefined' && child.label === 'ID') {
           child.value.forEach((val: any, index: number) => {
             if (val === selectionProperty) {
@@ -138,16 +130,7 @@ export const PegaExtensionsCompareTableLayout = (props: TableLayoutProps) => {
   }, [numFields, fields]);
 
   if (loading) {
-    return (
-      <Progress
-        placement='local'
-        message={(window as any).PCore.getLocaleUtils().getLocaleValue(
-          'Loading content...',
-          'Generic',
-          '@BASECLASS!GENERIC!PYGENERICFIELDS',
-        )}
-      />
-    );
+    return <Progress placement='local' message={createPlatform(getPConnect).text.loadingContent()} />;
   }
 
   if (displayFormat === 'radio-button-card') {

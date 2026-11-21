@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, type MouseEvent } from 'react';
 import { withConfiguration, Checkbox, Text } from '@pega/cosmos-react-core';
 import '../shared/create-nonce';
+import { createPlatform } from '../shared/platform';
 
 export type CheckboxTriggerProps = {
   getPConnect?: any;
@@ -81,35 +82,22 @@ export const PegaExtensionsCheckboxTrigger = (props: CheckboxTriggerProps) => {
         if (value !== e.currentTarget.checked) {
           actions.updateFieldValue(propName, e.currentTarget.checked);
           hasValueChange.current = true;
-          const context = getPConnect().getContextName();
-          const data: any = (window as any).PCore.getStore().getState().data?.[context]?.dataInfo?.content;
+          const platform = createPlatform(getPConnect);
+          const data: any = platform.store.contextData()?.dataInfo?.content;
 
           /* To force the refresh, we will call a savable DP that will contain the current value and return the update content */
-          const itemData = (window as any).PCore.getContainerUtils().getContainerItemData(
-            getPConnect().getTarget(),
-            getPConnect().getContextName(),
-          );
+          const itemData = platform.containers.currentItem();
           const key = itemData?.key ? JSON.parse(itemData.key) : {};
           const newObj = { ...data };
           delete newObj?.classID;
           const bodyData = { ...newObj, ...key };
-          (window as any).PCore.getRestClient()
-            .invokeRestApi('createDataObject', {
-              body: { data: bodyData },
-              queryPayload: { data_view_ID: dataPage },
-            })
+          createPlatform(getPConnect)
+            .dataObjects.create(dataPage, bodyData)
             .then((resp: any) => {
               const respData = resp?.data?.responseData;
               const updateObj = { ...respData };
               delete updateObj?.pzInsKey;
-              (window as any).PCore.getStore().dispatch({
-                type: 'SET_PROPERTY',
-                payload: {
-                  context: getPConnect().getContextName(),
-                  reference: 'dataInfo.content',
-                  value: updateObj,
-                },
-              });
+              platform.store.setProperty('dataInfo.content', updateObj);
             });
         }
       }}
