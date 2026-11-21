@@ -24,24 +24,8 @@ const meta: Meta<typeof PegaExtensionsJapaneseInput> = {
 export default meta;
 type Story = StoryObj<typeof PegaExtensionsJapaneseInput>;
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-  };
-};
-
 export const Default: Story = {
   render: (args) => {
-    setPCore();
     const props = {
       ...args,
       getPConnect: () => {

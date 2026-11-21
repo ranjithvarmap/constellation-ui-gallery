@@ -1,35 +1,23 @@
-import { afterAll, beforeEach, expect, jest, test } from '@jest/globals';
+import { afterAll, afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as LangSwitchModule from './index';
 import { formatTimezoneLabel, getAvailableTimezones, langSwitchRuntime, prioritizeTimezones } from './utils';
+import { installPlatformFake, type PlatformFake } from '../shared/platform/fake';
 
-const runtime = globalThis as typeof globalThis & { PCore?: any };
 const reloadMock = jest.fn();
 const intlRuntime = Intl as typeof Intl & {
   supportedValuesOf?: (key: string) => string[];
 };
 const originalSupportedValuesOf = intlRuntime.supportedValuesOf;
 
-const setPCore = (currentLocale = 'en_EN', currentTimezone = 'UTC', setTimezone = jest.fn()) => {
-  runtime.PCore = {
-    getEnvironmentInfo: () => {
-      return {
-        getUseLocale: () => currentLocale,
-        getTimeZone: () => currentTimezone,
-      };
-    },
-    getLocaleUtils: () => {
-      return {
-        getTimeZoneInUse: () => currentTimezone,
-        setTimezone,
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync: () => Promise.resolve({ success: true }),
-      };
-    },
-  };
+let platform: PlatformFake;
+
+/* The operator's session as the platform reports it; D_SetLocale succeeds. */
+const installLangSwitchPlatform = (currentLocale = 'en_EN', currentTimezone = 'UTC') => {
+  platform = installPlatformFake({
+    environment: { useLocale: currentLocale, timeZone: currentTimezone },
+    readDataPage: () => ({ success: true }),
+  });
 };
 
 const buildPConnect = () => {
@@ -47,7 +35,7 @@ beforeEach(() => {
 });
 
 test('renders current locale and language options', () => {
-  setPCore();
+  installLangSwitchPlatform();
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -66,7 +54,7 @@ test('renders current locale and language options', () => {
 });
 
 test('selects the configured locale that matches the current language on load', () => {
-  setPCore('fr-FR');
+  installLangSwitchPlatform('fr-FR');
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -80,7 +68,7 @@ test('selects the configured locale that matches the current language on load', 
 });
 
 test('shows the configured Java locale code when the runtime locale uses JavaScript formatting', () => {
-  setPCore('fr-fr');
+  installLangSwitchPlatform('fr-fr');
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -95,7 +83,7 @@ test('shows the configured Java locale code when the runtime locale uses JavaScr
 });
 
 test('renders timezone controls when changeTimezone is true', () => {
-  setPCore();
+  installLangSwitchPlatform();
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -113,7 +101,7 @@ test('renders timezone controls when changeTimezone is true', () => {
 });
 
 test('renders compact language-only view with language codes for narrow nav placements', () => {
-  setPCore();
+  installLangSwitchPlatform();
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -159,7 +147,7 @@ test('sorts timezones by utc offset and then friendly name', () => {
 
 test('renders timezone options sorted by utc offset and name', () => {
   intlRuntime.supportedValuesOf = jest.fn(() => ['UTC', 'America/New_York', 'America/Chicago']);
-  setPCore('en_EN', 'UTC');
+  installLangSwitchPlatform('en_EN', 'UTC');
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -180,20 +168,7 @@ test('renders timezone options sorted by utc offset and name', () => {
 });
 
 test('calls D_SetLocale and reloads when the data page succeeds', async () => {
-  const getPageDataAsync = jest.fn(async () => ({ status: 200 }));
-
-  runtime.PCore = {
-    getEnvironmentInfo: () => {
-      return {
-        getUseLocale: () => 'en_EN',
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync,
-      };
-    },
-  };
+  platform = installPlatformFake({ environment: { useLocale: 'en_EN' }, readDataPage: () => ({ status: 200 }) });
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -207,32 +182,21 @@ test('calls D_SetLocale and reloads when the data page succeeds', async () => {
   fireEvent.change(screen.getByLabelText('Select language'), { target: { value: 'fr_FR' } });
 
   await waitFor(() => {
-    expect(getPageDataAsync.mock.calls[0]).toEqual([
-      'D_SetLocale',
-      'primary',
-      { useLocale: 'fr_FR' },
-      { invalidateCache: true },
-    ]);
+    expect(platform.calls.dataPageReads[0]).toEqual({
+      dataPage: 'D_SetLocale',
+      context: 'primary',
+      parameters: { useLocale: 'fr_FR' },
+      options: { invalidateCache: true },
+    });
     expect(reloadMock).toHaveBeenCalledWith('fr_FR');
   });
 });
 
 test('skips D_SetLocale and reloads immediately when persistChanges is false', async () => {
-  const getPageDataAsync = jest.fn(async () => ({ status: 200 }));
-
-  runtime.PCore = {
-    getEnvironmentInfo: () => {
-      return {
-        getUseLocale: () => 'en_EN',
-        getTimeZone: () => 'UTC',
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync,
-      };
-    },
-  };
+  platform = installPlatformFake({
+    environment: { useLocale: 'en_EN', timeZone: 'UTC' },
+    readDataPage: () => ({ status: 200 }),
+  });
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -244,27 +208,16 @@ test('skips D_SetLocale and reloads immediately when persistChanges is false', a
   fireEvent.change(screen.getByLabelText('Select language'), { target: { value: 'fr_FR' } });
 
   await waitFor(() => {
-    expect(getPageDataAsync).not.toHaveBeenCalled();
+    expect(platform.calls.dataPageReads).toEqual([]);
     expect(reloadMock).toHaveBeenCalledWith('fr_FR');
   });
 });
 
 test('calls D_SetLocale from the compact view when the language changes', async () => {
-  const getPageDataAsync = jest.fn(async () => ({ status: 200 }));
-
-  runtime.PCore = {
-    getEnvironmentInfo: () => {
-      return {
-        getUseLocale: () => 'en_EN',
-        getTimeZone: () => 'UTC',
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync,
-      };
-    },
-  };
+  platform = installPlatformFake({
+    environment: { useLocale: 'en_EN', timeZone: 'UTC' },
+    readDataPage: () => ({ status: 200 }),
+  });
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -279,32 +232,21 @@ test('calls D_SetLocale from the compact view when the language changes', async 
   fireEvent.click(await screen.findByRole('option', { name: /French/ }));
 
   await waitFor(() => {
-    expect(getPageDataAsync.mock.calls[0]).toEqual([
-      'D_SetLocale',
-      'primary',
-      { useLocale: 'fr_FR' },
-      { invalidateCache: true },
-    ]);
+    expect(platform.calls.dataPageReads[0]).toEqual({
+      dataPage: 'D_SetLocale',
+      context: 'primary',
+      parameters: { useLocale: 'fr_FR' },
+      options: { invalidateCache: true },
+    });
     expect(reloadMock).toHaveBeenCalledWith('fr_FR');
   });
 });
 
 test('skips D_SetLocale from the compact view when persistChanges is false', async () => {
-  const getPageDataAsync = jest.fn(async () => ({ status: 200 }));
-
-  runtime.PCore = {
-    getEnvironmentInfo: () => {
-      return {
-        getUseLocale: () => 'en_EN',
-        getTimeZone: () => 'UTC',
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync,
-      };
-    },
-  };
+  platform = installPlatformFake({
+    environment: { useLocale: 'en_EN', timeZone: 'UTC' },
+    readDataPage: () => ({ status: 200 }),
+  });
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -318,32 +260,16 @@ test('skips D_SetLocale from the compact view when persistChanges is false', asy
   fireEvent.click(await screen.findByRole('option', { name: /French/ }));
 
   await waitFor(() => {
-    expect(getPageDataAsync).not.toHaveBeenCalled();
+    expect(platform.calls.dataPageReads).toEqual([]);
     expect(reloadMock).toHaveBeenCalledWith('fr_FR');
   });
 });
 
 test('calls D_SetLocale with useTimeZone only when apply is clicked and shows a confirmation alert', async () => {
-  const getPageDataAsync = jest.fn(async () => ({ success: true }));
-
-  runtime.PCore = {
-    getEnvironmentInfo: () => {
-      return {
-        getUseLocale: () => 'en_EN',
-        getTimeZone: () => 'UTC',
-      };
-    },
-    getLocaleUtils: () => {
-      return {
-        getTimeZoneInUse: () => 'UTC',
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync,
-      };
-    },
-  };
+  platform = installPlatformFake({
+    environment: { useLocale: 'en_EN', timeZone: 'UTC' },
+    readDataPage: () => ({ success: true }),
+  });
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -356,17 +282,17 @@ test('calls D_SetLocale with useTimeZone only when apply is clicked and shows a 
   fireEvent.click(screen.getByRole('combobox', { name: 'Search timezone' }));
   fireEvent.click(await screen.findByRole('option', { name: formatTimezoneLabel('America/New_York') }));
 
-  expect(getPageDataAsync).not.toHaveBeenCalled();
+  expect(platform.calls.dataPageReads).toEqual([]);
 
   fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
   await waitFor(() => {
-    expect(getPageDataAsync.mock.calls[0]).toEqual([
-      'D_SetLocale',
-      'primary',
-      { useTimeZone: 'America/New_York' },
-      { invalidateCache: true },
-    ]);
+    expect(platform.calls.dataPageReads[0]).toEqual({
+      dataPage: 'D_SetLocale',
+      context: 'primary',
+      parameters: { useTimeZone: 'America/New_York' },
+      options: { invalidateCache: true },
+    });
   });
 
   expect(reloadMock).not.toHaveBeenCalled();
@@ -376,26 +302,10 @@ test('calls D_SetLocale with useTimeZone only when apply is clicked and shows a 
 });
 
 test('treats a resolved timezone save without a status code as successful', async () => {
-  const getPageDataAsync = jest.fn(async () => undefined);
-
-  runtime.PCore = {
-    getEnvironmentInfo: () => {
-      return {
-        getUseLocale: () => 'en_EN',
-        getTimeZone: () => 'UTC',
-      };
-    },
-    getLocaleUtils: () => {
-      return {
-        getTimeZoneInUse: () => 'UTC',
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync,
-      };
-    },
-  };
+  platform = installPlatformFake({
+    environment: { useLocale: 'en_EN', timeZone: 'UTC' },
+    readDataPage: () => undefined,
+  });
 
   render(
     <LangSwitchModule.PegaExtensionsLangSwitch
@@ -411,6 +321,10 @@ test('treats a resolved timezone save without a status code as successful', asyn
 
   expect(await screen.findByRole('alert')).toBeTruthy();
   expect(screen.queryByText('Unable to switch timezone.')).toBeNull();
+});
+
+afterEach(() => {
+  platform?.restore();
 });
 
 afterAll(() => {

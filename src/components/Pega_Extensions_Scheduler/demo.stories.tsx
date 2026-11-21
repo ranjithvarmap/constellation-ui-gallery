@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsScheduler, type PegaExtensionsSchedulerProps } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 // Define extended props for the story
 interface StorySchedulerProps extends PegaExtensionsSchedulerProps {
@@ -74,33 +75,11 @@ const genValue = (args: any) => {
   };
   return JSON.stringify(obj);
 };
-const setPCore = () => {
-  (window as any).PCore = {
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return undefined;
-        },
-        getActions: () => {
-          return {
-            ACTION_OPENWORKBYHANDLE: 'openWorkByHandle',
-          };
-        },
-      };
-    },
-  };
-};
-
 type Story = StoryObj<StorySchedulerProps>;
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    installPlatformFake();
     const props = {
       ...args,
       value: genValue(args),

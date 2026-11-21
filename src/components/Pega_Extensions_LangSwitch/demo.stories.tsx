@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsLangSwitch } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 type StoryArgs = ComponentProps<typeof PegaExtensionsLangSwitch> & {
   currentLocale: string;
@@ -43,41 +44,17 @@ const meta: Meta<StoryArgs> = {
 
 export default meta;
 
-const setPCore = (currentLocale: string, currentTimezone: string) => {
-  (globalThis as typeof globalThis & { PCore?: any }).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync: (
-          _dataPage: string,
-          _context: string,
-          parameters: { useLocale?: string; useTimeZone?: string },
-        ) => {
-          if (parameters.useLocale || parameters.useTimeZone) {
-            return Promise.resolve({ success: true });
-          }
+const installLangSwitchPlatform = (currentLocale: string, currentTimezone: string) => {
+  return installPlatformFake({
+    environment: { useLocale: currentLocale, timeZone: currentTimezone },
+    readDataPage: (_dataPage: string, parameters: { useLocale?: string; useTimeZone?: string }) => {
+      if (parameters.useLocale || parameters.useTimeZone) {
+        return Promise.resolve({ success: true });
+      }
 
-          return Promise.resolve({ status: 500 });
-        },
-      };
+      return Promise.resolve({ status: 500 });
     },
-    getEnvironmentInfo: () => {
-      return {
-        getUseLocale: () => currentLocale,
-        getTimeZone: () => currentTimezone,
-      };
-    },
-    getLocaleUtils: () => {
-      return {
-        getTimeZoneInUse: () => currentTimezone,
-        setTimezone: () => {},
-      };
-    },
-  };
+  });
 };
 
 type Story = StoryObj<StoryArgs>;
@@ -91,7 +68,7 @@ const buildPConnect = () => {
 
 export const Default: Story = {
   render: (args) => {
-    setPCore(args.currentLocale, args.currentTimezone);
+    installLangSwitchPlatform(args.currentLocale, args.currentTimezone);
     const props = {
       ...args,
       getPConnect: buildPConnect,
@@ -116,7 +93,7 @@ export const Default: Story = {
 
 export const CompactLanguageOnly: Story = {
   render: (args) => {
-    setPCore(args.currentLocale, args.currentTimezone);
+    installLangSwitchPlatform(args.currentLocale, args.currentTimezone);
     const props = {
       ...args,
       getPConnect: buildPConnect,

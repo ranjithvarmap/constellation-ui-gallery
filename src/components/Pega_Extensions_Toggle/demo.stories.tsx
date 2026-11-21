@@ -40,21 +40,6 @@ export default {
   component: PegaExtensionsToggle,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-  };
-};
-
 const setPConnect = () => {
   return {
     getStateProps: () => {
@@ -83,7 +68,6 @@ type Story = StoryObj<typeof PegaExtensionsToggle>;
 const ToggleDemo = (inputs: ToggleProps) => {
   return {
     render: (args: ToggleProps) => {
-      setPCore();
       const props = {
         ...args,
         getPConnect: setPConnect,

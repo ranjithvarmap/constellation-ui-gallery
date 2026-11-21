@@ -46,21 +46,6 @@ export default {
   component: PegaExtensionsMaskedInput,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-  };
-};
-
 const setPConnect = () => {
   return {
     getStateProps: () => {
@@ -107,7 +92,6 @@ type Story = StoryObj<typeof PegaExtensionsMaskedInput>;
 const MaskedInputDemo = (inputs: MaskedInputProps) => {
   return {
     render: (args: MaskedInputProps) => {
-      setPCore();
       const props = {
         ...args,
         additionalProps: { style: { maxWidth: '80ch' } },

@@ -18,19 +18,10 @@ export default {
   },
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getEnvironmentInfo: () => {
-      return {};
-    },
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsCaseLauncher>;
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
     const props = {
       ...args,
       getPConnect: () => {

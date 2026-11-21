@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsDateInput } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 const localeOptions = {
   'Use environment locale': undefined,
@@ -60,24 +61,11 @@ const meta: Meta<typeof PegaExtensionsDateInput> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof PegaExtensionsDateInput>;
+/* The operator's locale, as the platform reports it. */
+const installDateInputPlatform = (locale = 'en-US') =>
+  installPlatformFake({ environment: { locale, useLocale: locale, timeZone: 'UTC' } });
 
-const setPCore = (locale = 'en-US') => {
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getLocale: () => locale,
-        getUseLocale: () => locale,
-        getTimeZone: () => 'UTC',
-      };
-    },
-  };
-};
+type Story = StoryObj<typeof PegaExtensionsDateInput>;
 
 const buildPConnect = () => {
   return {
@@ -104,7 +92,7 @@ const buildPConnect = () => {
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    installDateInputPlatform();
     return <PegaExtensionsDateInput {...args} getPConnect={buildPConnect} />;
   },
   args: {
@@ -125,7 +113,7 @@ export const Default: Story = {
 
 export const JapaneseEra: Story = {
   render: (args) => {
-    setPCore();
+    installDateInputPlatform();
     return <PegaExtensionsDateInput {...args} getPConnect={buildPConnect} />;
   },
   args: {
@@ -138,7 +126,7 @@ export const JapaneseEra: Story = {
 
 export const Hijri: Story = {
   render: (args) => {
-    setPCore('ar-SA');
+    installDateInputPlatform('ar-SA');
     return <PegaExtensionsDateInput {...args} getPConnect={buildPConnect} />;
   },
   args: {
@@ -151,7 +139,7 @@ export const Hijri: Story = {
 
 export const DisplayOnly: Story = {
   render: (args) => {
-    setPCore();
+    installDateInputPlatform();
     return <PegaExtensionsDateInput {...args} getPConnect={buildPConnect} />;
   },
   args: {

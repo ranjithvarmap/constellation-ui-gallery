@@ -1,5 +1,6 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsShortcuts } from './index';
+import { installPlatformFake } from '../shared/platform/fake';
 
 export default {
   title: 'Widgets/Shortcuts',
@@ -17,30 +18,10 @@ export default {
   component: PegaExtensionsShortcuts,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getConstants: () => {
-      return {
-        CASE_INFO: {},
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return '/case/case-1';
-        },
-        getActions: () => {
-          return { ACTION_SHOWVIEW: 'ACTION_SHOWVIEW' };
-        },
-      };
-    },
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsShortcuts>;
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    installPlatformFake();
     const props = {
       ...args,
       getPConnect: () => {

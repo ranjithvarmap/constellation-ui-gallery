@@ -41,7 +41,7 @@ case). Check `type` in `config.json` before changing a component.
    together. No runtime file reaches `PCore` directly any more; keep it that way.
    The `platform-facade` skill has the procedure and a coverage map.
 3. **Stories and tests use `installPlatformFake`**, not a hand-rolled
-   `window.PCore = {...}` stub. 25 older stories still have one; do not copy them.
+   `window.PCore = {...}` stub. None is left; keep it that way.
 4. **Every `config.json` property must be read by the component.**
    `tools/config-parity/known-drift.json` only ever shrinks — remove an entry when
    you fix it, never add one.

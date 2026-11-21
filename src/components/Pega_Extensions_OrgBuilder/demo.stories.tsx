@@ -1,6 +1,7 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsOrgBuilder, type OrgBuilderProps } from './index';
 import type { OrgBuilderDataPageResponse } from './OrgTypes';
+import { installPlatformFake } from '../shared/platform/fake';
 
 // Sample reference organization for story mock (business context)
 const referenceOrganization = {
@@ -251,7 +252,7 @@ export default {
   component: PegaExtensionsOrgBuilder,
 };
 
-const setPCore = (Example: string) => {
+const installOrgBuilderPlatform = (Example: string) => {
   let data: OrgBuilderDataPageResponse;
   if (Example === 'basic') {
     data = {
@@ -265,56 +266,7 @@ const setPCore = (Example: string) => {
       pyTargetOrganization: simpleTarget,
     };
   }
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getEvents: () => {
-      return {
-        getCaseEvent: () => {
-          return {
-            ASSIGNMENT_SUBMISSION: 'ASSIGNMENT_SUBMISSION',
-          };
-        },
-      };
-    },
-    getPubSubUtils: () => {
-      return {
-        subscribe: () => {
-          /* nothing */
-        },
-        unsubscribe: () => {
-          /* nothing */
-        },
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return window.location.href;
-        },
-        getActions: () => {
-          return {
-            ACTION_OPENWORKBYHANDLE: 'openWorkByHandle',
-          };
-        },
-      };
-    },
-    getDataPageUtils: () => {
-      return {
-        getPageDataAsync: () => {
-          return Promise.resolve(data);
-        },
-      };
-    },
-  };
+  return installPlatformFake({ readDataPage: () => data });
 };
 
 interface OrgBuilderPropsExt extends OrgBuilderProps {
@@ -328,7 +280,7 @@ export const Default: Story = {
     fullscreen: 'On',
   },
   render: (args: OrgBuilderPropsExt) => {
-    setPCore(args.Example);
+    installOrgBuilderPlatform(args.Example);
     const props = {
       ...args,
       getPConnect: () => {

@@ -1,6 +1,7 @@
 import type { StoryObj } from '@storybook/react-webpack5';
 import { PegaExtensionsGanttChart } from './index';
 import { DateTimeDisplay, FieldValueList, Link } from '@pega/cosmos-react-core';
+import { installPlatformFake } from '../shared/platform/fake';
 
 export default {
   title: 'Widgets/Gantt Chart',
@@ -164,152 +165,63 @@ const tasks: any = {
   },
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getLocaleUtils: () => {
-      return {
-        getLocaleValue: (val: string) => {
-          return val;
-        },
-      };
+const installGanttPlatform = () => {
+  return installPlatformFake({
+    /* Tasks live in localStorage, so edits made in the chart survive a reload. */
+    rows: () => {
+      const ganttData = getDataFromStorage();
+      const mockData = Array.from(Object.entries(tasks).map((val: any) => val[1]));
+      if (!ganttData) saveDataToStorage(mockData);
+      return ganttData || mockData;
     },
-    createPConnect: () => ({
-      getPConnect: () => ({
-        createComponent: (meta: any) => {
-          const id = meta.config.pyID;
-          const fields = [
-            {
-              name: 'ID',
-              value: (
-                <h3>
-                  <Link href='/' previewable>
-                    {id}
-                  </Link>
-                </h3>
-              ),
-            },
-            { name: 'Description', value: tasks[id].pyDescription },
-            { name: 'Progress', value: tasks[id].Progress },
-            {
-              name: 'Start',
-              value: <DateTimeDisplay variant='datetime' value={tasks[id].StartDate} />,
-            },
-            {
-              name: 'End',
-              value: <DateTimeDisplay variant='datetime' value={tasks[id].EndDate} />,
-            },
-          ];
-          return <FieldValueList variant='stacked' fields={fields} />;
-        },
-      }),
-    }),
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
+    onFieldUpdate: (pzInsKey: string, fields: Record<string, unknown>) => {
+      let tasksFromWebStorage = getDataFromStorage();
+      if (tasksFromWebStorage) {
+        const taskIndex = tasksFromWebStorage.findIndex((x: any) => x.pzInsKey === pzInsKey);
+        let task = tasksFromWebStorage[taskIndex];
+        task = { ...task, ...fields };
+        tasksFromWebStorage = [
+          ...tasksFromWebStorage.slice(0, taskIndex),
+          task,
+          ...tasksFromWebStorage.slice(taskIndex + 1),
+        ];
+        saveDataToStorage(tasksFromWebStorage);
+      }
     },
-    getViewResources: () => {
-      return {
-        fetchViewResources: () => {
-          return {
-            config: {
-              showLabel: true,
-            },
-          };
+    detailData: { content: { pyStatusWork: 'New' } },
+    renderView: (meta: any) => {
+      const id = meta.config.pyID;
+      const fields = [
+        {
+          name: 'ID',
+          value: (
+            <h3>
+              <Link href='/' previewable>
+                {id}
+              </Link>
+            </h3>
+          ),
         },
-        updateViewResources: () => {},
-      };
+        { name: 'Description', value: tasks[id].pyDescription },
+        { name: 'Progress', value: tasks[id].Progress },
+        {
+          name: 'Start',
+          value: <DateTimeDisplay variant='datetime' value={tasks[id].StartDate} />,
+        },
+        {
+          name: 'End',
+          value: <DateTimeDisplay variant='datetime' value={tasks[id].EndDate} />,
+        },
+      ];
+      return <FieldValueList variant='stacked' fields={fields} />;
     },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-    getEvents: () => {
-      return {
-        getCaseEvent: () => {
-          return {
-            ASSIGNMENT_SUBMISSION: 'ASSIGNMENT_SUBMISSION',
-          };
-        },
-      };
-    },
-    getPubSubUtils: () => {
-      return {
-        subscribe: () => {
-          /* nothing */
-        },
-        unsubscribe: () => {
-          /* nothing */
-        },
-      };
-    },
-    getSemanticUrlUtils: () => {
-      return {
-        getResolvedSemanticURL: () => {
-          return undefined;
-        },
-        getActions: () => {
-          return {
-            ACTION_OPENWORKBYHANDLE: 'openWorkByHandle',
-          };
-        },
-      };
-    },
-    getDataApiUtils: () => {
-      return {
-        getCaseEditLock: () => {
-          return Promise.resolve({
-            headers: {
-              etag: 'xxx',
-            },
-          });
-        },
-        updateCaseEditFieldsData: (pzInsKey: string, payload: any) => {
-          let tasksFromWebStorage = getDataFromStorage();
-          if (tasksFromWebStorage) {
-            const taskIndex = tasksFromWebStorage.findIndex((x: any) => x.pzInsKey === pzInsKey);
-            let task = tasksFromWebStorage[taskIndex];
-            task = { ...task, ...payload[pzInsKey] };
-            tasksFromWebStorage = [
-              ...tasksFromWebStorage.slice(0, taskIndex),
-              task,
-              ...tasksFromWebStorage.slice(taskIndex + 1),
-            ];
-            saveDataToStorage(tasksFromWebStorage);
-          }
-          return Promise.resolve();
-        },
-        getDataObjectView: () => {
-          return Promise.resolve({
-            data: {
-              data: {
-                content: {
-                  pyStatusWork: 'New',
-                },
-              },
-            },
-          });
-        },
-        getData: () => {
-          const ganttData = getDataFromStorage();
-          const mockData = Array.from(Object.entries(tasks).map((val: any) => val[1]));
-          if (!ganttData) saveDataToStorage(mockData);
-          return Promise.resolve({
-            data: {
-              data: ganttData || mockData,
-            },
-          });
-        },
-      };
-    },
-  };
+  });
 };
 
 type Story = StoryObj<typeof PegaExtensionsGanttChart>;
 export const Default: Story = {
   render: (args) => {
-    setPCore();
+    installGanttPlatform();
     const props = {
       ...args,
       getPConnect: () => {

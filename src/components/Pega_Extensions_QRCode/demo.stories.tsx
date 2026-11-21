@@ -18,16 +18,9 @@ export default {
   component: PegaExtensionsQRCode,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    /* Nothing */
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsQRCode>;
 export const Default: Story = {
   render: (args) => {
-    setPCore();
     const props = {
       ...args,
       getPConnect: () => {

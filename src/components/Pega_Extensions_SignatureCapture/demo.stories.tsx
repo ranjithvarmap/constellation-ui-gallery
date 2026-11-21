@@ -28,26 +28,10 @@ export default {
   component: PegaExtensionsSignatureCapture,
 };
 
-const setPCore = () => {
-  (window as any).PCore = {
-    getComponentsRegistry: () => {
-      return {
-        getLazyComponent: (f: string) => f,
-      };
-    },
-    getEnvironmentInfo: () => {
-      return {
-        getTimeZone: () => 'local',
-      };
-    },
-  };
-};
-
 type Story = StoryObj<typeof PegaExtensionsSignatureCapture>;
 
 export const Default: Story = {
   render: (args) => {
-    setPCore();
     const props = {
       ...args,
       getPConnect: () => {
